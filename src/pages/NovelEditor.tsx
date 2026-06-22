@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Plus, Trash2, BookOpen, ArrowLeft, ChevronDown, ChevronRight, Edit3 } from 'lucide-react';
+import { Plus, Trash2, BookOpen, ArrowLeft, ChevronDown, ChevronRight, Edit3, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
@@ -11,7 +11,7 @@ import { useNovelStore } from '../store/novelStore';
 import { useEpisodeStore } from '../store/episodeStore';
 import { useUiStore } from '../store/uiStore';
 import { novelService } from '../services/novelService';
-import type { Character, WorldBuilding } from '../types/novel';
+import type { Character } from '../types/novel';
 
 export default function NovelEditor() {
   const { id: novelId = '' } = useParams<{ id: string }>();
@@ -52,20 +52,25 @@ export default function NovelEditor() {
     setTitle(activeNovel.title);
     setSummary(activeNovel.summary ?? '');
     setStatus(activeNovel.status);
-    setTags(activeNovel.tags.map((t) => t.tag.name).join(', '));
+    setTags(activeNovel.tags.map((t) => t.tag.name).sort().join(', '));
     // Context
     const ctx = activeNovel.context;
     if (ctx) {
       setPlotOutline(ctx.plotOutline ?? '');
       setWritingStyle(ctx.writingStyle ?? '');
-      setCharacters(ctx.characters ?? []);
-      setWorldSetting(ctx.worldBuilding?.setting ?? '');
+      if (typeof ctx.characters === 'string') {
+        setCharacters(JSON.parse(ctx.characters) ?? []);
+      } else {
+        setCharacters(ctx.characters ?? []);
+      }
+      setWorldSetting(ctx.worldBuilding ?? '');
     }
   }, [activeNovel]);
 
   const handleSaveNovel = async () => {
     setIsSaving(true);
     try {
+      console.log(tags)
       await updateNovel(novelId, {
         title,
         summary: summary || undefined,
@@ -86,7 +91,7 @@ export default function NovelEditor() {
         plotOutline: plotOutline || undefined,
         writingStyle: writingStyle || undefined,
         characters,
-        worldBuilding: { setting: worldSetting || undefined },
+        worldBuilding: worldSetting || undefined,
       });
       addToast({ type: 'success', title: 'Story context saved!' });
     } catch {
@@ -166,7 +171,28 @@ export default function NovelEditor() {
             </div>
           </div>
 
-          <Input label="Tags (comma-separated)" id="novel-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="fantasy, adventure, romance" hint="These help readers discover your novel" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Input
+              label="Tags (comma-separated)"
+              id="novel-tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="fantasy, adventure, romance"
+              hint="These help readers discover your novel"
+            />
+            {tags.trim() && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {tags.split(',')
+                  .map(t => t.trim())
+                  .filter(Boolean)
+                  .map((tag, i) => (
+                    <Badge key={i} variant="blue">
+                      {tag}
+                    </Badge>
+                  ))}
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button variant="primary" onClick={handleSaveNovel} loading={isSaving} id="save-novel-btn">
@@ -218,9 +244,9 @@ export default function NovelEditor() {
                   Characters
                 </label>
                 <Button
-                  variant="ghost"
+                  variant="primary"
                   size="sm"
-                  leftIcon={<Plus size={14} />}
+                  leftIcon={<UserPlus size={14} />}
                   onClick={() => setCharacters((c) => [...c, { name: '', role: 'other', description: '' }])}
                   id="add-character-btn"
                 >
@@ -235,6 +261,15 @@ export default function NovelEditor() {
                     onChange={(e) => {
                       const updated = [...characters];
                       updated[i] = { ...updated[i], name: e.target.value };
+                      setCharacters(updated);
+                    }}
+                  />
+                  <Input
+                    placeholder="Description"
+                    value={char.description}
+                    onChange={(e) => {
+                      const updated = [...characters];
+                      updated[i] = { ...updated[i], description: e.target.value };
                       setCharacters(updated);
                     }}
                   />
@@ -313,11 +348,6 @@ export default function NovelEditor() {
                     <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text-primary)' }}>
                       {ep.title}
                     </p>
-                    {ep.aiEnrichmentStatus !== 'completed' && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        AI: {ep.aiEnrichmentStatus}
-                      </span>
-                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

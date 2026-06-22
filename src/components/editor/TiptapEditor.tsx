@@ -1,10 +1,10 @@
+import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Highlight from '@tiptap/extension-highlight';
 import Typography from '@tiptap/extension-typography';
-import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { EditorToolbar } from './EditorToolbar';
 import { EditorBubbleMenu } from './EditorBubbleMenu';
@@ -42,7 +42,6 @@ export function TiptapEditor({
       CharacterCount,
       Highlight.configure({ multicolor: false }),
       Typography,
-      Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
     content,
@@ -56,10 +55,15 @@ export function TiptapEditor({
     onUpdate: ({ editor }) => {
       onChange?.(editor.getHTML());
     },
-    onCreate: ({ editor }) => {
-      onEditorReady?.(editor as Editor);
-    },
   });
+
+
+
+  useEffect(() => {
+    if (editor) {
+      onEditorReady?.(editor);
+    }
+  }, [editor, onEditorReady]);
 
   return (
     <div

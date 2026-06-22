@@ -1,4 +1,4 @@
-import { BubbleMenu } from '@tiptap/extension-bubble-menu';
+import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
 import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter } from 'lucide-react';
 
@@ -48,7 +48,8 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
   return (
     <BubbleMenu
       editor={editor}
-      tippyOptions={{ duration: 150, placement: 'top' }}
+      updateDelay={150}
+      options={{ placement: 'top' }}
     >
       <div
         role="toolbar"

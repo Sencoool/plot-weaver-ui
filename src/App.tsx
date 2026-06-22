@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
 import { useThemeStore } from './store/themeStore';
 import { useAuthStore } from './store/authStore';
+import api from './services/api';
 
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
@@ -25,10 +26,15 @@ function AuthCallback() {
   useEffect(() => {
     const token = params.get('token');
     if (token) {
-      // Store token and redirect to home
-      // A full implementation would also call GET /auth/me to get user info
-      login({ id: '', email: '' }, token);
-      navigate('/', { replace: true });
+      // Fetch user profile and redirect to home
+      api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => {
+          login(res.data, token);
+          navigate('/', { replace: true });
+        })
+        .catch(() => {
+          navigate('/login', { replace: true });
+        });
     } else {
       navigate('/login', { replace: true });
     }
@@ -40,6 +46,8 @@ function AuthCallback() {
 function App() {
   // Apply dark class to <html> on initial load based on stored preference
   const { mode } = useThemeStore();
+  const { token, user, setUser, logout } = useAuthStore();
+
   useEffect(() => {
     if (mode === 'dark') {
       document.documentElement.classList.add('dark');
@@ -47,6 +55,15 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [mode]);
+
+  useEffect(() => {
+    if (token && !user) {
+      // Fetch user profile on startup if token exists but user is null (e.g. after refresh)
+      api.get('/auth/me')
+        .then(res => setUser(res.data))
+        .catch(() => logout());
+    }
+  }, [token, user, setUser, logout]);
 
   return (
     <Router>

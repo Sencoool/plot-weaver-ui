@@ -24,10 +24,17 @@ export function AiPanel({ novelId, episodeId, editor }: AiPanelProps) {
     reset,
   } = useAiStore();
 
+  const formatTextToHtml = (text: string) => {
+    return text
+      .split('\n\n')
+      .map(paragraph => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  };
+
   const handleAccept = () => {
     if (editor && generatedText) {
-      // Replace entire editor content with AI output
-      editor.commands.setContent(generatedText);
+      // Replace entire editor content with AI output, formatted as HTML to preserve line breaks
+      editor.commands.setContent(formatTextToHtml(generatedText));
     }
     reset();
   };

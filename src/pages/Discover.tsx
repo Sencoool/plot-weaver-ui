@@ -71,7 +71,7 @@ export default function Discover() {
                   </p>
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginTop: 'auto' }}>
-                  {novel.tags.slice(0, 3).map(({ tag }) => (
+                  {novel.tags.slice(0, 3).sort((a, b) => a.tag.name.localeCompare(b.tag.name)).map(({ tag }) => (
                     <Badge key={tag.id} variant="blue">{tag.name}</Badge>
                   ))}
                 </div>

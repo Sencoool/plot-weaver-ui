@@ -15,7 +15,7 @@ export interface NovelContext {
   id: string;
   novelId: string;
   characters: Character[];
-  worldBuilding: WorldBuilding | null;
+  worldBuilding: string | null;
   plotOutline: string | null;
   writingStyle: string | null;
   updatedAt: string;
@@ -25,13 +25,6 @@ export interface Character {
   name: string;
   description?: string;
   role: 'protagonist' | 'antagonist' | 'supporting' | 'other';
-}
-
-export interface WorldBuilding {
-  setting?: string;
-  time?: string;
-  locations?: string[];
-  rules?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -62,7 +55,7 @@ export interface FindNovelsQuery {
 
 export interface UpsertNovelContextDto {
   characters?: Character[];
-  worldBuilding?: WorldBuilding;
+  worldBuilding?: string;
   plotOutline?: string;
   writingStyle?: string;
 }

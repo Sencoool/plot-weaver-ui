@@ -38,6 +38,7 @@ interface AiStore {
   setSegmentProgress: (current: number, total: number) => void;
   finishGeneration: (requestId: string, totalChars: number) => void;
   setError: (message: string) => void;
+  cancelGeneration: () => void;
   reset: () => void;
 }
 
@@ -45,7 +46,7 @@ const defaultState = {
   isPanelOpen: false,
   prompt: '',
   targetChars: 2500,
-  temperature: 0.8,
+  temperature: 0.6,
   status: 'idle' as GenerationStatus,
   error: null,
   currentSegment: 0,
@@ -85,7 +86,7 @@ export const useAiStore = create<AiStore>((set) => ({
   setSegmentProgress: (current, total) =>
     set({ currentSegment: current, totalSegments: total }),
 
-  finishGeneration: (requestId, _totalChars) =>
+  finishGeneration: (requestId) =>
     set((s) => ({
       status: 'done',
       generatedText: s.streamedText,
@@ -94,6 +95,15 @@ export const useAiStore = create<AiStore>((set) => ({
 
   setError: (message) =>
     set({ status: 'error', error: message }),
+
+  cancelGeneration: () =>
+    set({
+      status: 'idle',
+      streamedText: '',
+      generatedText: '',
+      currentSegment: 0,
+      totalSegments: 0,
+    }),
 
   reset: () => set({ ...defaultState }),
 }));

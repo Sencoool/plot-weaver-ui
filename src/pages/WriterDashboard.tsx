@@ -164,7 +164,7 @@ export default function WriterDashboard() {
                 {/* Tags */}
                 {novel.tags.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                    {novel.tags.slice(0, 3).map(({ tag }) => (
+                    {novel.tags.sort((a, b) => a.tag.name.localeCompare(b.tag.name)).slice(0, 3).map(({ tag }) => (
                       <span
                         key={tag.id}
                         style={{

@@ -32,7 +32,13 @@ export function AiPromptInput({ novelId, episodeId, editor }: AiPromptInputProps
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const getEditorContent = () => editor?.getHTML() ?? '';
+  const getEditorContent = () => {
+    if (!editor) return '';
+    if (editor.isDestroyed) {
+      throw new Error("Editor is syncing, please wait a moment and try again.");
+    }
+    return editor.getHTML();
+  };
 
   const { generate, cancel } = useAiGeneration(novelId, episodeId, getEditorContent);
 

@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, Save, Sparkles, CheckCircle, AlertCircle, Clock,
+  ArrowLeft, Save, Sparkles, CheckCircle, AlertCircle,
   Upload, Eye, EyeOff,
 } from 'lucide-react';
 import { TiptapEditor } from '../components/editor/TiptapEditor';
 import { AiPanel } from '../components/ai/AiPanel';
 import { Modal } from '../components/ui/Modal';
+import { ToastContainer } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Spinner } from '../components/ui/Spinner';
 import { useEpisodeStore } from '../store/episodeStore';
 import { useAiStore } from '../store/aiStore';
@@ -48,7 +48,7 @@ export default function EpisodeEditor() {
   const navigate = useNavigate();
   const isNew = episodeId === 'new';
 
-  const editorRef = useRef<Editor | null>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
 
   const { activeEpisode, fetchEpisode, setActiveEpisode } = useEpisodeStore();
   const { openPanel, isPanelOpen } = useAiStore();
@@ -119,7 +119,7 @@ export default function EpisodeEditor() {
       return;
     }
 
-    const content = editorRef.current?.getHTML() ?? '';
+    const content = editor?.getHTML() ?? '';
 
     setIsSaving(true);
     try {
@@ -315,7 +315,7 @@ export default function EpisodeEditor() {
           <TiptapEditor
             content={activeEpisode?.content ?? ''}
             onChange={handleEditorChange}
-            onEditorReady={(editor) => { editorRef.current = editor; }}
+            onEditorReady={setEditor}
             placeholder="Begin your story here… Let the words flow across the page."
             className="h-full"
           />
@@ -327,7 +327,7 @@ export default function EpisodeEditor() {
         <AiPanel
           novelId={novelId}
           episodeId={isNew ? undefined : episodeId}
-          editor={editorRef.current}
+          editor={editor}
         />
       )}
 
@@ -449,6 +449,9 @@ export default function EpisodeEditor() {
           )}
         </div>
       </Modal>
+
+      {/* Global toasts for this layout */}
+      <ToastContainer />
     </>
   );
 }

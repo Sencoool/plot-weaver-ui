@@ -28,19 +28,37 @@ export function useAiGeneration(
     setSegmentProgress,
     finishGeneration,
     setError,
-    reset,
+    cancelGeneration,
   } = useAiStore();
 
   const { addToast } = useUiStore();
 
   const generate = useCallback(async () => {
-    if (!novelId || !prompt.trim()) return;
+    console.log("🔥 generate() WAS CALLED!", { novelId, episodeId, prompt });
+
+    if (!novelId) {
+      addToast({ type: 'error', title: 'Generation blocked', message: 'novelId is missing' });
+      return;
+    }
+    if (!prompt.trim()) {
+      addToast({ type: 'error', title: 'Generation blocked', message: 'Prompt is empty' });
+      return;
+    }
+
+    let currentContent = "";
+    try {
+      currentContent = getEditorContent();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      addToast({ type: 'error', title: 'Failed to get editor content', message });
+      return;
+    }
 
     // Abort any ongoing generation
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
-    const currentContent = getEditorContent();
+    console.log("🔥 Calling startGeneration...", currentContent);
     startGeneration(currentContent);
 
     const request: StreamGenerationRequest = {
@@ -51,10 +69,14 @@ export function useAiGeneration(
       temperature,
     };
 
+    console.log("🔥 Request payload built:", request);
+
     try {
+      console.log("🔥 Calling streamStoryGeneration API...");
       await streamStoryGeneration(
         request,
         (event) => {
+          console.log("🔥 Received event from stream:", event.type);
           switch (event.type) {
             case 'chunk':
               appendChunk(event.text);
@@ -76,7 +98,9 @@ export function useAiGeneration(
         },
         abortControllerRef.current.signal,
       );
+      console.log("🔥 streamStoryGeneration finished successfully");
     } catch (err) {
+      console.error("🔥 Error in streamStoryGeneration:", err);
       if ((err as Error).name === 'AbortError') return; // User cancelled
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
@@ -99,8 +123,8 @@ export function useAiGeneration(
 
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort();
-    reset();
-  }, [reset]);
+    cancelGeneration();
+  }, [cancelGeneration]);
 
   return { generate, cancel };
 }
