@@ -66,8 +66,7 @@ export function Modal({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1rem',
-        backgroundColor: 'var(--color-bg-overlay)',
-        backdropFilter: 'blur(4px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"

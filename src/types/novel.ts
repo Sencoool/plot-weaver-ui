@@ -15,6 +15,7 @@ export interface NovelContext {
   id: string;
   novelId: string;
   characters: Character[];
+  /** Free-text world/setting description */
   worldBuilding: string | null;
   plotOutline: string | null;
   writingStyle: string | null;

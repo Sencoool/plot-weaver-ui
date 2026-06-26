@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Save, Sparkles, CheckCircle, AlertCircle,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { TiptapEditor } from '../components/editor/TiptapEditor';
 import { AiPanel } from '../components/ai/AiPanel';
-import { Modal } from '../components/ui/Modal';
+import { TxtUploadModal } from '../components/novel/TxtUploadModal';
 import { ToastContainer } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
@@ -60,8 +60,6 @@ export default function EpisodeEditor() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Load existing episode
   useEffect(() => {
@@ -148,29 +146,10 @@ export default function EpisodeEditor() {
     }
   };
 
-  // .txt upload handler
-  const handleUpload = async (choice: 'keep' | 'ai') => {
-    if (!uploadFile) return;
-    setIsUploading(true);
-    try {
-      const result = await episodeService.uploadContent(novelId, uploadFile, title || uploadFile.name.replace('.txt', ''));
-      setTitle(result.title);
-      if (choice === 'ai') {
-        // Navigate to the new episode and open AI panel
-        navigate(`/writer/novel/${novelId}/episode/${result.id}`, { replace: true });
-        openPanel();
-        addToast({ type: 'info', title: 'File uploaded — AI enrichment running in background', duration: 6000 });
-      } else {
-        navigate(`/writer/novel/${novelId}/episode/${result.id}`, { replace: true });
-        addToast({ type: 'success', title: 'Episode created from file!' });
-      }
-    } catch {
-      addToast({ type: 'error', title: 'Upload failed' });
-    } finally {
-      setIsUploading(false);
-      setUploadModalOpen(false);
-      setUploadFile(null);
-    }
+  // Called by TxtUploadModal after successful upload
+  const handleUploaded = (episodeId: string, openAi?: boolean) => {
+    navigate(`/writer/novel/${novelId}/episode/${episodeId}`, { replace: true });
+    if (openAi) openPanel();
   };
 
   if (isLoading) {
@@ -186,269 +165,192 @@ export default function EpisodeEditor() {
       <div
         style={{
           display: 'flex',
-          flexDirection: 'column',
-          height: 'calc(100vh - 64px)',
-          backgroundColor: 'var(--color-bg-base)',
+          justifyContent: 'center',
+          minHeight: 'calc(100vh - 64px)',
+          padding: '2rem',
         }}
       >
-        {/* Editor Top Bar */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            padding: '0.75rem 1.5rem',
-            borderBottom: '1px solid var(--color-border)',
-            backgroundColor: 'var(--color-bg-elevated)',
-            flexShrink: 0,
+            width: '100%',
+            maxWidth: '1400px',
+            gap: '1.5rem',
           }}
         >
-          {/* Back button */}
-          <Link to={`/writer/novel/${novelId}`} aria-label="Back to novel" id="episode-back-btn">
-            <button
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '32px',
-                height: '32px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--color-border)',
-                background: 'none',
-                color: 'var(--color-text-secondary)',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)',
-                flexShrink: 0,
-              }}
-            >
-              <ArrowLeft size={16} />
-            </button>
-          </Link>
-
-          {/* Title input */}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Episode Title"
-            id="episode-title-input"
+          {/* Left Column */}
+          <div
             style={{
               flex: 1,
-              fontSize: '1.25rem',
-              fontWeight: 700,
-              color: 'var(--color-text-primary)',
-              background: 'none',
-              border: 'none',
-              outline: 'none',
-              fontFamily: 'var(--font-sans)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
             }}
-          />
-
-          {/* Right controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
-            {/* Save status */}
-            <SaveStatusIndicator status={saveStatus} />
-
-            {/* Publish toggle */}
-            <button
-              onClick={() => setIsPublished((p) => !p)}
-              id="episode-publish-toggle"
-              title={isPublished ? 'Published — click to unpublish' : 'Draft — click to publish'}
+          >
+            {/* Header Row (Title & Controls) hovering above the box */}
+            <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.375rem',
-                padding: '0.375rem 0.75rem',
-                borderRadius: 'var(--radius-full)',
-                border: '1px solid',
-                borderColor: isPublished ? 'var(--color-success)' : 'var(--color-border)',
-                backgroundColor: isPublished ? 'var(--color-success-bg)' : 'transparent',
-                color: isPublished ? 'var(--color-success)' : 'var(--color-text-muted)',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)',
+                gap: '1rem',
               }}
             >
-              {isPublished ? <Eye size={13} /> : <EyeOff size={13} />}
-              {isPublished ? 'Published' : 'Draft'}
-            </button>
+              <Link to={`/writer/novel/${novelId}`} aria-label="Back to novel" id="episode-back-btn">
+                <button
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--color-border-strong)',
+                    backgroundColor: 'var(--color-bg-base)',
+                    color: 'var(--color-text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                    flexShrink: 0,
+                  }}
+                >
+                  <ArrowLeft size={16} />
+                </button>
+              </Link>
 
-            {/* Upload .txt */}
-            <Button
-              variant="ghost"
-              size="sm"
-              leftIcon={<Upload size={14} />}
-              onClick={() => setUploadModalOpen(true)}
-              id="episode-upload-btn"
-            >
-              Import .txt
-            </Button>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Episode Title"
+                id="episode-title-input"
+                style={{
+                  flex: 1,
+                  fontSize: '1.125rem',
+                  fontWeight: 600,
+                  color: 'var(--color-text-primary)',
+                  background: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              />
 
-            {/* AI Assistant */}
-            <Button
-              variant="ai"
-              size="sm"
-              leftIcon={<Sparkles size={14} />}
-              onClick={openPanel}
-              id="episode-ai-btn"
-            >
-              AI Write
-            </Button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
+                <SaveStatusIndicator status={saveStatus} />
+                <button
+                  onClick={() => setIsPublished((p) => !p)}
+                  id="episode-publish-toggle"
+                  title={isPublished ? 'Published — click to unpublish' : 'Draft — click to publish'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: 'var(--radius-full)',
+                    border: '1px solid',
+                    borderColor: isPublished ? 'var(--color-success)' : 'var(--color-border)',
+                    backgroundColor: isPublished ? 'var(--color-success-bg)' : 'var(--color-bg-base)',
+                    color: isPublished ? 'var(--color-success)' : 'var(--color-text-muted)',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                >
+                  {isPublished ? <Eye size={13} /> : <EyeOff size={13} />}
+                  {isPublished ? 'Published' : 'Draft'}
+                </button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Upload size={14} />}
+                  onClick={() => setUploadModalOpen(true)}
+                  id="episode-upload-btn"
+                >
+                  Import .txt
+                </Button>
+                <Button
+                  variant="ai"
+                  size="sm"
+                  leftIcon={<Sparkles size={14} />}
+                  onClick={openPanel}
+                  id="episode-ai-btn"
+                >
+                  AI Write
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Save size={14} />}
+                  loading={isSaving}
+                  onClick={handleManualSave}
+                  id="episode-save-btn"
+                >
+                  {isNew ? 'Create' : 'Save'}
+                </Button>
+              </div>
+            </div>
 
-            {/* Manual save */}
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Save size={14} />}
-              loading={isSaving}
-              onClick={handleManualSave}
-              id="episode-save-btn"
+            {/* Editor Box */}
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                backgroundColor: 'var(--color-bg-base)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-md)',
+                border: '1px solid var(--color-border)',
+                overflow: 'hidden',
+                minHeight: '600px',
+                height: 'calc(100vh - 160px)',
+              }}
             >
-              {isNew ? 'Create' : 'Save'}
-            </Button>
+              <TiptapEditor
+                content={activeEpisode?.content ?? ''}
+                onChange={handleEditorChange}
+                onEditorReady={setEditor}
+                placeholder="Begin your story here… Let the words flow across the page."
+                className="h-full"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Editor area */}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <TiptapEditor
-            content={activeEpisode?.content ?? ''}
-            onChange={handleEditorChange}
-            onEditorReady={setEditor}
-            placeholder="Begin your story here… Let the words flow across the page."
-            className="h-full"
-          />
+          {/* Right Column: AI Panel */}
+          {isPanelOpen && (
+            <div
+              style={{
+                width: '380px',
+                marginTop: '2.5rem', // Aligns top of AI box with top of Editor box
+                flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                backgroundColor: 'var(--color-bg-base)',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-md)',
+                border: '1px solid var(--color-border)',
+                overflow: 'hidden',
+                animation: 'slide-in-right var(--transition-normal) ease-out',
+                minHeight: '600px',
+                height: 'calc(100vh - 160px)',
+              }}
+            >
+              <AiPanel
+                novelId={novelId}
+                episodeId={isNew ? undefined : episodeId}
+                editor={editor}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* AI Panel — outside main layout flow */}
-      {isPanelOpen && (
-        <AiPanel
-          novelId={novelId}
-          episodeId={isNew ? undefined : episodeId}
-          editor={editor}
-        />
-      )}
-
-      {/* .txt Upload Modal */}
-      <Modal
+      {/* .txt Upload Modal — extracted component */}
+      <TxtUploadModal
         isOpen={uploadModalOpen}
-        onClose={() => { setUploadModalOpen(false); setUploadFile(null); }}
-        title="Import .txt File"
-        size="sm"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-            Upload a <strong>.txt</strong> file to create a new episode. Choose how to handle the content:
-          </p>
-
-          {/* File input */}
-          <label
-            htmlFor="txt-upload-input"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              padding: '1.5rem',
-              border: '2px dashed var(--color-border-strong)',
-              borderRadius: 'var(--radius-lg)',
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)',
-              backgroundColor: uploadFile ? 'var(--color-bg-subtle)' : 'transparent',
-              gap: '0.5rem',
-            }}
-          >
-            <Upload size={24} style={{ color: 'var(--color-blue-500)' }} />
-            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>
-              {uploadFile ? uploadFile.name : 'Click to select .txt file'}
-            </span>
-            {uploadFile && (
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                {(uploadFile.size / 1024).toFixed(1)} KB
-              </span>
-            )}
-            <input
-              id="txt-upload-input"
-              type="file"
-              accept=".txt"
-              onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-              style={{ display: 'none' }}
-            />
-          </label>
-
-          {uploadFile && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {/* Option 1: Keep original */}
-              <button
-                onClick={() => handleUpload('keep')}
-                disabled={isUploading}
-                id="upload-keep-btn"
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '1rem',
-                  padding: '1rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  backgroundColor: 'var(--color-bg-elevated)',
-                  cursor: isUploading ? 'not-allowed' : 'pointer',
-                  textAlign: 'left',
-                  transition: 'all var(--transition-fast)',
-                }}
-                onMouseEnter={(e) => { if (!isUploading) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border-strong)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)'; }}
-              >
-                <div style={{ fontSize: '1.5rem' }}>📄</div>
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-primary)', marginBottom: '0.25rem' }}>
-                    Keep Original Text
-                  </p>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                    Import the file content exactly as-is into the editor.
-                  </p>
-                </div>
-              </button>
-
-              {/* Option 2: AI Generate */}
-              <button
-                onClick={() => handleUpload('ai')}
-                disabled={isUploading}
-                id="upload-ai-btn"
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '1rem',
-                  padding: '1rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid transparent',
-                  background: 'linear-gradient(var(--color-bg-elevated), var(--color-bg-elevated)) padding-box, linear-gradient(135deg, var(--color-blue-600), var(--color-purple-600)) border-box',
-                  cursor: isUploading ? 'not-allowed' : 'pointer',
-                  textAlign: 'left',
-                  transition: 'all var(--transition-fast)',
-                }}
-              >
-                <div style={{ fontSize: '1.5rem' }}>✨</div>
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-primary)', marginBottom: '0.25rem' }}>
-                    Generate AI Content
-                  </p>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
-                    Use this file as a seed. Open AI panel to enhance and rewrite with AI context.
-                  </p>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {isUploading && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-              <Spinner size={16} />
-              Uploading…
-            </div>
-          )}
-        </div>
-      </Modal>
+        onClose={() => setUploadModalOpen(false)}
+        novelId={novelId}
+        onUploaded={handleUploaded}
+      />
 
       {/* Global toasts for this layout */}
       <ToastContainer />

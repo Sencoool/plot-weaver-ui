@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Trash2, Edit3, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, BookOpen } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Spinner } from '../components/ui/Spinner';
-import { Card } from '../components/ui/Badge';
+import { NovelCard } from '../components/novel/NovelCard';
 import { useNovelStore } from '../store/novelStore';
 import { useAuthStore } from '../store/authStore';
 import { useUiStore } from '../store/uiStore';
-
-const STATUS_BADGE: Record<string, { label: string; variant: 'blue' | 'green' | 'gray' }> = {
-  draft: { label: 'Draft', variant: 'gray' },
-  unpublished: { label: 'Unpublished', variant: 'blue' },
-  published: { label: 'Published', variant: 'green' },
-};
 
 export default function WriterDashboard() {
   const navigate = useNavigate();
@@ -113,7 +106,7 @@ export default function WriterDashboard() {
         </div>
       )}
 
-      {/* Novel grid */}
+      {/* Novel grid — uses NovelCard component */}
       {!isLoading && novels.length > 0 && (
         <div
           style={{
@@ -122,106 +115,14 @@ export default function WriterDashboard() {
             gap: '1.25rem',
           }}
         >
-          {novels.map((novel) => {
-            const s = STATUS_BADGE[novel.status] ?? STATUS_BADGE.draft;
-            return (
-              <Card
-                key={novel.id}
-                hover
-                style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-                  <h3
-                    style={{
-                      fontSize: '1.0625rem',
-                      fontWeight: 700,
-                      color: 'var(--color-text-primary)',
-                      lineHeight: 1.35,
-                      flex: 1,
-                    }}
-                  >
-                    {novel.title}
-                  </h3>
-                  <Badge variant={s.variant}>{s.label}</Badge>
-                </div>
-
-                {novel.summary && (
-                  <p
-                    style={{
-                      fontSize: '0.875rem',
-                      color: 'var(--color-text-secondary)',
-                      lineHeight: 1.6,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {novel.summary}
-                  </p>
-                )}
-
-                {/* Tags */}
-                {novel.tags.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                    {novel.tags.sort((a, b) => a.tag.name.localeCompare(b.tag.name)).slice(0, 3).map(({ tag }) => (
-                      <span
-                        key={tag.id}
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: 'var(--radius-full)',
-                          backgroundColor: 'var(--color-surface)',
-                          color: 'var(--color-text-secondary)',
-                          border: '1px solid var(--color-border)',
-                        }}
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Meta + actions */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                  <span
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      fontSize: '0.8125rem',
-                      color: 'var(--color-text-muted)',
-                    }}
-                  >
-                    <Clock size={13} />
-                    {novel._count?.episodes ?? 0} episodes
-                  </span>
-
-                  <div style={{ display: 'flex', gap: '0.375rem' }}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon
-                      leftIcon={<Trash2 size={14} />}
-                      onClick={() => setDeleteTarget(novel.id)}
-                      id={`delete-novel-${novel.id}`}
-                      aria-label={`Delete ${novel.title}`}
-                    />
-                    <Link to={`/writer/novel/${novel.id}`}>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        leftIcon={<Edit3 size={14} />}
-                        id={`edit-novel-${novel.id}`}
-                      >
-                        Edit
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+          {novels.map((novel) => (
+            <NovelCard
+              key={novel.id}
+              novel={novel}
+              mode="writer"
+              onDelete={(id) => setDeleteTarget(id)}
+            />
+          ))}
         </div>
       )}
 

@@ -23,7 +23,7 @@ interface EpisodeStore {
   clearError: () => void;
 }
 
-export const useEpisodeStore = create<EpisodeStore>((set, get) => ({
+export const useEpisodeStore = create<EpisodeStore>((set, _get) => ({
   episodes: [],
   activeEpisode: null,
   saveStatus: 'idle',

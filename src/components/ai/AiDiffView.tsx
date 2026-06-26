@@ -30,7 +30,6 @@ function computeWordDiff(original: string, generated: string): DiffToken[] {
   }
 
   // Backtrack to build diff tokens
-  const tokens: DiffToken[] = [];
   let i = m;
   let j = n;
   const temp: DiffToken[] = [];

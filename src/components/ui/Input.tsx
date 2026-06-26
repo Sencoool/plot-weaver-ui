@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -13,7 +13,8 @@ const sizeClass = { sm: 'input-sm', md: '', lg: 'input-lg' };
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, inputSize = 'md', leftIcon, rightIcon, className = '', id, ...rest }, ref) => {
-    const inputId = id ?? `input-${Math.random().toString(36).slice(2, 7)}`;
+    const generatedId = useId();
+    const inputId = id ?? `input-${generatedId}`;
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -99,8 +100,9 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, hint, className = '', id, ...rest }, ref) => {
-    const inputId = id ?? `textarea-${Math.random().toString(36).slice(2, 7)}`;
+  ({ label, error, hint, className = '[field-sizing:content]', id, ...rest }, ref) => {
+    const generatedId = useId();
+    const inputId = id ?? `textarea-${generatedId}`;
 
     return (
       <div className="flex flex-col gap-1.5">

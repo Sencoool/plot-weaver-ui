@@ -62,21 +62,6 @@ export function EpisodeListItem({ episode, index, novelId, onDelete, mode = 'wri
           >
             {episode.title}
           </p>
-          {aiPending && mode === 'writer' && (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem',
-                color: 'var(--color-purple-500)',
-                marginTop: '0.1rem',
-              }}
-            >
-              <Brain size={11} />
-              AI enrichment: {episode.aiEnrichmentStatus}
-            </span>
-          )}
         </div>
       </div>
 

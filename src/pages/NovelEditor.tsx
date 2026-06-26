@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Plus, Trash2, BookOpen, ArrowLeft, ChevronDown, ChevronRight, Edit3, UserPlus } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Plus, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Badge } from '../components/ui/Badge';
-import { Modal } from '../components/ui/Modal';
 import { Spinner } from '../components/ui/Spinner';
 import { Textarea } from '../components/ui/Input';
+import { Badge } from '../components/ui/Badge';
+import { EpisodeListItem } from '../components/novel/EpisodeListItem';
+import { CreateEpisodeModal } from '../components/novel/CreateEpisodeModal';
+import { NovelContextPanel } from '../components/novel/NovelContextPanel';
 import { useNovelStore } from '../store/novelStore';
 import { useEpisodeStore } from '../store/episodeStore';
 import { useUiStore } from '../store/uiStore';
@@ -15,12 +17,14 @@ import type { Character } from '../types/novel';
 
 export default function NovelEditor() {
   const { id: novelId = '' } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { activeNovel, fetchNovel, updateNovel } = useNovelStore();
   const { episodes, fetchEpisodes, createEpisode, deleteEpisode } = useEpisodeStore();
   const { addToast } = useUiStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingLore, setIsSavingLore] = useState(false);
 
   // Novel metadata form
   const [title, setTitle] = useState('');
@@ -28,17 +32,14 @@ export default function NovelEditor() {
   const [status, setStatus] = useState<'draft' | 'unpublished' | 'published'>('draft');
   const [tags, setTags] = useState('');
 
-  // Lore panel
-  const [loreOpen, setLoreOpen] = useState(false);
+  // Lore panel state
   const [plotOutline, setPlotOutline] = useState('');
   const [writingStyle, setWritingStyle] = useState('');
   const [characters, setCharacters] = useState<Character[]>([]);
   const [worldSetting, setWorldSetting] = useState('');
 
   // Episode modal
-  const [newEpTitle, setNewEpTitle] = useState('');
   const [createEpOpen, setCreateEpOpen] = useState(false);
-  const [isCreatingEp, setIsCreatingEp] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchNovel(novelId), fetchEpisodes(novelId)]).finally(() =>
@@ -49,20 +50,27 @@ export default function NovelEditor() {
   // Sync form from loaded novel
   useEffect(() => {
     if (!activeNovel) return;
+    console.log(activeNovel.context)
     setTitle(activeNovel.title);
     setSummary(activeNovel.summary ?? '');
     setStatus(activeNovel.status);
-    setTags(activeNovel.tags.map((t) => t.tag.name).sort().join(', '));
-    // Context
+    setTags(activeNovel.tags.map((t) => t.tag.name).join(', '));
     const ctx = activeNovel.context;
     if (ctx) {
       setPlotOutline(ctx.plotOutline ?? '');
       setWritingStyle(ctx.writingStyle ?? '');
+
+      let parseCharacters: Character[] = [];
       if (typeof ctx.characters === 'string') {
-        setCharacters(JSON.parse(ctx.characters) ?? []);
+        try {
+          parseCharacters = JSON.parse(ctx.characters);
+        } catch (error) {
+          parseCharacters = [];
+        }
       } else {
-        setCharacters(ctx.characters ?? []);
+        parseCharacters = ctx.characters ?? [];
       }
+      setCharacters(parseCharacters);
       setWorldSetting(ctx.worldBuilding ?? '');
     }
   }, [activeNovel]);
@@ -70,12 +78,15 @@ export default function NovelEditor() {
   const handleSaveNovel = async () => {
     setIsSaving(true);
     try {
-      console.log(tags)
       await updateNovel(novelId, {
         title,
         summary: summary || undefined,
         status,
-        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+        tags: tags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .map((t) => t.charAt(0).toUpperCase() + t.slice(1)),
       });
       addToast({ type: 'success', title: 'Novel saved!' });
     } catch {
@@ -86,6 +97,7 @@ export default function NovelEditor() {
   };
 
   const handleSaveLore = async () => {
+    setIsSavingLore(true);
     try {
       await novelService.upsertContext(novelId, {
         plotOutline: plotOutline || undefined,
@@ -96,23 +108,24 @@ export default function NovelEditor() {
       addToast({ type: 'success', title: 'Story context saved!' });
     } catch {
       addToast({ type: 'error', title: 'Failed to save context' });
+    } finally {
+      setIsSavingLore(false);
     }
   };
 
-  const handleCreateEpisode = async () => {
-    if (!newEpTitle.trim()) return;
-    setIsCreatingEp(true);
+  const handleCreateEpisode = async (title: string) => {
+    const ep = await createEpisode(novelId, { title, content: '' });
+    setCreateEpOpen(false);
+    addToast({ type: 'success', title: 'Episode created!' });
+    navigate(`/writer/novel/${novelId}/episode/${ep.id}`);
+  };
+
+  const handleDeleteEpisode = async (id: string) => {
     try {
-      const ep = await createEpisode(novelId, { title: newEpTitle.trim(), content: '' });
-      setCreateEpOpen(false);
-      setNewEpTitle('');
-      addToast({ type: 'success', title: 'Episode created!' });
-      // Navigate to editor
-      window.location.href = `/writer/novel/${novelId}/episode/${ep.id}`;
+      await deleteEpisode(id);
+      addToast({ type: 'success', title: 'Episode deleted' });
     } catch {
-      addToast({ type: 'error', title: 'Failed to create episode' });
-    } finally {
-      setIsCreatingEp(false);
+      addToast({ type: 'error', title: 'Failed to delete episode' });
     }
   };
 
@@ -127,7 +140,11 @@ export default function NovelEditor() {
   return (
     <div className="page-container" style={{ paddingTop: '2rem', paddingBottom: '3rem', maxWidth: '900px' }}>
       {/* Back */}
-      <Link to="/writer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }} id="back-to-dashboard">
+      <Link
+        to="/writer"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}
+        id="back-to-dashboard"
+      >
         <ArrowLeft size={14} /> Back to Dashboard
       </Link>
 
@@ -172,24 +189,12 @@ export default function NovelEditor() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <Input
-              label="Tags (comma-separated)"
-              id="novel-tags"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="fantasy, adventure, romance"
-              hint="These help readers discover your novel"
-            />
-            {tags.trim() && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {tags.split(',')
-                  .map(t => t.trim())
-                  .filter(Boolean)
-                  .map((tag, i) => (
-                    <Badge key={i} variant="blue">
-                      {tag}
-                    </Badge>
-                  ))}
+            <Input label="Tags (comma-separated)" id="novel-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="fantasy, adventure, romance" hint="These help readers discover your novel" />
+            {tags.split(',').map((t) => t.trim()).filter(Boolean).length > 0 && (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {tags.split(',').map((t) => t.trim()).filter(Boolean).map((t, idx) => (
+                  <Badge key={idx} variant="blue">{t.charAt(0).toUpperCase() + t.slice(1)}</Badge>
+                ))}
               </div>
             )}
           </div>
@@ -202,111 +207,19 @@ export default function NovelEditor() {
         </div>
       </div>
 
-      {/* Lore / AI Context Panel */}
-      <div className="card" style={{ marginBottom: '1.5rem', overflow: 'hidden' }}>
-        <button
-          onClick={() => setLoreOpen((o) => !o)}
-          id="lore-toggle"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            padding: '1.25rem 2rem',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--color-text-primary)',
-            fontWeight: 700,
-            fontSize: '1rem',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            🧠 AI Story Context
-            <Badge variant="purple">Used by AI when writing</Badge>
-          </span>
-          {loreOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-        </button>
-
-        {loreOpen && (
-          <div style={{ padding: '0 2rem 2rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '1rem' }}>
-              This context is used by the AI when generating content. The more detail you provide, the better the AI understands your world.
-            </p>
-            <Textarea label="Plot Outline" id="lore-plot" value={plotOutline} onChange={(e) => setPlotOutline(e.target.value)} placeholder="Main story arc, key events, turning points…" rows={4} hint="Max 5000 characters" />
-            <Textarea label="Writing Style" id="lore-style" value={writingStyle} onChange={(e) => setWritingStyle(e.target.value)} placeholder="E.g., third-person omniscient, literary fiction style, dark and suspenseful tone…" rows={3} hint="Max 1000 characters" />
-            <Input label="World Setting" id="lore-world" value={worldSetting} onChange={(e) => setWorldSetting(e.target.value)} placeholder="E.g., medieval fantasy kingdom, futuristic cyberpunk city 2187…" />
-
-            {/* Characters */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-                  Characters
-                </label>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  leftIcon={<UserPlus size={14} />}
-                  onClick={() => setCharacters((c) => [...c, { name: '', role: 'other', description: '' }])}
-                  id="add-character-btn"
-                >
-                  Add Character
-                </Button>
-              </div>
-              {characters.map((char, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.625rem', alignItems: 'flex-start' }}>
-                  <Input
-                    placeholder="Name"
-                    value={char.name}
-                    onChange={(e) => {
-                      const updated = [...characters];
-                      updated[i] = { ...updated[i], name: e.target.value };
-                      setCharacters(updated);
-                    }}
-                  />
-                  <Input
-                    placeholder="Description"
-                    value={char.description}
-                    onChange={(e) => {
-                      const updated = [...characters];
-                      updated[i] = { ...updated[i], description: e.target.value };
-                      setCharacters(updated);
-                    }}
-                  />
-                  <select
-                    value={char.role}
-                    onChange={(e) => {
-                      const updated = [...characters];
-                      updated[i] = { ...updated[i], role: e.target.value as Character['role'] };
-                      setCharacters(updated);
-                    }}
-                    className="input"
-                    style={{ width: '150px', flexShrink: 0 }}
-                  >
-                    <option value="protagonist">Protagonist</option>
-                    <option value="antagonist">Antagonist</option>
-                    <option value="supporting">Supporting</option>
-                    <option value="other">Other</option>
-                  </select>
-                  <button
-                    onClick={() => setCharacters((c) => c.filter((_, j) => j !== i))}
-                    style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: '0.5rem', flexShrink: 0 }}
-                    aria-label="Remove character"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button variant="ai" onClick={handleSaveLore} id="save-lore-btn">
-                Save Context
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* AI Story Context Panel — extracted component */}
+      <NovelContextPanel
+        plotOutline={plotOutline}
+        writingStyle={writingStyle}
+        worldSetting={worldSetting}
+        characters={characters}
+        onPlotOutlineChange={setPlotOutline}
+        onWritingStyleChange={setWritingStyle}
+        onWorldSettingChange={setWorldSetting}
+        onCharactersChange={setCharacters}
+        onSave={handleSaveLore}
+        isSaving={isSavingLore}
+      />
 
       {/* Episodes list */}
       <div className="card" style={{ padding: '2rem' }}>
@@ -321,88 +234,30 @@ export default function NovelEditor() {
 
         {episodes.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-            <BookOpen size={32} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
             <p>No episodes yet. Create your first one!</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             {episodes.map((ep, i) => (
-              <div
+              <EpisodeListItem
                 key={ep.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.875rem 1.25rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  backgroundColor: 'var(--color-bg-subtle)',
-                  transition: 'all var(--transition-fast)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', minWidth: '24px' }}>
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--color-text-primary)' }}>
-                      {ep.title}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  {ep.isPublished ? (
-                    <Badge variant="green">Published</Badge>
-                  ) : (
-                    <Badge variant="gray">Draft</Badge>
-                  )}
-                  <Link to={`/writer/novel/${novelId}/episode/${ep.id}`}>
-                    <Button variant="ghost" size="sm" icon leftIcon={<Edit3 size={14} />} id={`edit-ep-${ep.id}`} aria-label="Edit episode" />
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon
-                    leftIcon={<Trash2 size={14} />}
-                    onClick={async () => {
-                      await deleteEpisode(ep.id);
-                      addToast({ type: 'success', title: 'Episode deleted' });
-                    }}
-                    id={`delete-ep-${ep.id}`}
-                    aria-label="Delete episode"
-                  />
-                </div>
-              </div>
+                episode={ep}
+                index={i + 1}
+                novelId={novelId}
+                onDelete={handleDeleteEpisode}
+                mode="writer"
+              />
             ))}
           </div>
         )}
       </div>
 
       {/* Create Episode Modal */}
-      <Modal
+      <CreateEpisodeModal
         isOpen={createEpOpen}
-        onClose={() => { setCreateEpOpen(false); setNewEpTitle(''); }}
-        title="Create New Episode"
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => { setCreateEpOpen(false); setNewEpTitle(''); }} id="create-ep-cancel">Cancel</Button>
-            <Button variant="primary" onClick={handleCreateEpisode} loading={isCreatingEp} disabled={!newEpTitle.trim()} id="create-ep-confirm">
-              Create & Edit
-            </Button>
-          </>
-        }
-      >
-        <Input
-          label="Episode title"
-          id="new-episode-title"
-          value={newEpTitle}
-          onChange={(e) => setNewEpTitle(e.target.value)}
-          placeholder="Chapter 1: The Beginning…"
-          onKeyDown={(e) => e.key === 'Enter' && handleCreateEpisode()}
-          autoFocus
-        />
-      </Modal>
+        onClose={() => setCreateEpOpen(false)}
+        onCreate={handleCreateEpisode}
+      />
     </div>
   );
 }

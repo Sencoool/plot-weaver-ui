@@ -37,9 +37,14 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
     >
       <div
         className="page-container"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
+          alignItems: 'center',
+          width: '100%',
+        }}
       >
-        {/* Logo */}
+        {/* Logo — left column */}
         <Link
           to="/"
           style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', textDecoration: 'none' }}
@@ -71,17 +76,19 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
           </span>
         </Link>
 
-        {/* Center nav (writer variant shows a different set) */}
-        {variant === 'default' && (
+        {/* Center nav — middle column (always geometrically centered) */}
+        {variant === 'default' ? (
           <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <Link to="/discover" className="btn btn-ghost btn-sm">
               Discover
             </Link>
           </nav>
+        ) : (
+          <span /> /* placeholder to keep the grid intact in writer variant */
         )}
 
-        {/* Right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {/* Right side — right column, push content to the right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
@@ -114,7 +121,7 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
               </Link>
               {/* Profile */}
               <Link to="/profile" id="nav-profile">
-                <Button variant="ghost" size="sm" icon leftIcon={<User size={15} />}>
+                <Button variant="ghost" size="sm" leftIcon={<User size={15} />}>
                   {user?.name ?? user?.email?.split('@')[0] ?? 'Profile'}
                 </Button>
               </Link>

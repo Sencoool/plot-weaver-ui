@@ -81,13 +81,8 @@ function App() {
           {/* Writer workspace */}
           <Route path="writer" element={<WriterDashboard />} />
           <Route path="writer/novel/:id" element={<NovelEditor />} />
+          <Route path="writer/novel/:novelId/episode/:episodeId" element={<EpisodeEditor />} />
         </Route>
-
-        {/* Episode editor — full screen, no sidebar */}
-        <Route
-          path="/writer/novel/:novelId/episode/:episodeId"
-          element={<EpisodeEditor />}
-        />
 
         {/* Reader — distraction-free full screen */}
         <Route path="/read/:novelId/:episodeId" element={<Reader />} />

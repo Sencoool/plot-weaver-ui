@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, BookOpen, Edit3, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
@@ -16,13 +15,15 @@ interface NovelCardProps {
   onDelete?: (id: string) => void;
   /** Writer view shows edit/delete; reader view shows read link */
   mode?: 'writer' | 'reader';
+  id?: string;
 }
 
-export function NovelCard({ novel, onDelete, mode = 'writer' }: NovelCardProps) {
+export function NovelCard({ novel, onDelete, mode = 'writer', id }: NovelCardProps) {
   const s = STATUS_BADGE[novel.status] ?? STATUS_BADGE.draft;
 
   return (
     <article
+      id={id}
       className="card card-hover"
       style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
       aria-label={`Novel: ${novel.title}`}
