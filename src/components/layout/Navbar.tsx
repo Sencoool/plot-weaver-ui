@@ -28,12 +28,12 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
         display: 'flex',
         alignItems: 'center',
         borderBottom: '1px solid var(--color-border)',
-        backgroundColor: 'rgba(255,255,255,0.85)',
+        backgroundColor: 'var(--color-nav-bg)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         transition: 'background-color var(--transition-normal)',
       }}
-      className="dark:[backgroundColor:rgba(13,19,33,0.85)]"
+
     >
       <div
         className="page-container"

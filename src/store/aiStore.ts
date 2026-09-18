@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import type { GenerationStatus } from '../types/ai';
+﻿import { create } from 'zustand';
+import type { ChatMessage, ConversationTurn } from '../types/ai';
 
 interface AiStore {
   // Panel visibility
@@ -8,102 +8,130 @@ interface AiStore {
   openPanel: () => void;
   closePanel: () => void;
 
-  // Prompt
-  prompt: string;
-  targetChars: number;
+  // Settings
   temperature: number;
-  setPrompt: (prompt: string) => void;
-  setTargetChars: (chars: number) => void;
   setTemperature: (temp: number) => void;
 
-  // Generation status
-  status: GenerationStatus;
-  error: string | null;
+  // Aggregate status (reflects the last assistant message)
+  status: 'idle' | 'generating' | 'streaming' | 'done' | 'error';
 
-  // Segmented pipeline progress
-  currentSegment: number;
-  totalSegments: number;
+  // Conversation thread
+  messages: ChatMessage[];
 
-  // Output
-  streamedText: string;      // Accumulates SSE chunks in real-time
-  generatedText: string;     // Final completed output
-  originalText: string;      // Editor content BEFORE generation (for diff/reject)
+  // Streaming state — tracks the message being built right now
+  streamingMessageId: string | null;
 
-  // Active request ID (for reference)
-  requestId: string | null;
+  // Actions
+  addUserMessage: (text: string) => ChatMessage;
+  startAssistantMessage: () => ChatMessage;
+  appendToStreaming: (chunk: string) => void;
+  setMessageStatus: (id: string, status: ChatMessage['status']) => void;
+  setMessageError: (id: string) => void;
+  clearConversation: () => void;
+}
 
-  // Actions called by useAiGeneration hook
-  startGeneration: (originalEditorContent: string) => void;
-  appendChunk: (text: string) => void;
-  setSegmentProgress: (current: number, total: number) => void;
-  finishGeneration: (requestId: string, totalChars: number) => void;
-  setError: (message: string) => void;
-  cancelGeneration: () => void;
-  reset: () => void;
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 const defaultState = {
   isPanelOpen: false,
-  prompt: '',
-  targetChars: 2500,
   temperature: 0.6,
-  status: 'idle' as GenerationStatus,
-  error: null,
-  currentSegment: 0,
-  totalSegments: 0,
-  streamedText: '',
-  generatedText: '',
-  originalText: '',
-  requestId: null,
+  status: 'idle' as const,
+  messages: [] as ChatMessage[],
+  streamingMessageId: null as string | null,
 };
 
-export const useAiStore = create<AiStore>((set) => ({
+export const useAiStore = create<AiStore>((set, get) => ({
   ...defaultState,
 
+  // ── Panel ──────────────────────────────────────────────────────────────────
   togglePanel: () => set((s) => ({ isPanelOpen: !s.isPanelOpen })),
   openPanel: () => set({ isPanelOpen: true }),
   closePanel: () => set({ isPanelOpen: false }),
 
-  setPrompt: (prompt) => set({ prompt }),
-  setTargetChars: (targetChars) => set({ targetChars }),
+  // ── Settings ───────────────────────────────────────────────────────────────
   setTemperature: (temperature) => set({ temperature }),
 
-  startGeneration: (originalEditorContent: string) =>
-    set({
-      status: 'generating',
-      error: null,
-      streamedText: '',
-      generatedText: '',
-      originalText: originalEditorContent,
-      currentSegment: 0,
-      totalSegments: 0,
-      requestId: null,
-    }),
+  // ── Conversation actions ───────────────────────────────────────────────────
 
-  appendChunk: (text: string) =>
-    set((s) => ({ streamedText: s.streamedText + text, status: 'streaming' })),
-
-  setSegmentProgress: (current, total) =>
-    set({ currentSegment: current, totalSegments: total }),
-
-  finishGeneration: (requestId) =>
-    set((s) => ({
+  addUserMessage: (text: string) => {
+    const msg: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      content: text,
       status: 'done',
-      generatedText: s.streamedText,
-      requestId,
-    })),
+      timestamp: new Date(),
+    };
+    set((s) => ({ messages: [...s.messages, msg], status: 'generating' }));
+    return msg;
+  },
 
-  setError: (message) =>
-    set({ status: 'error', error: message }),
+  startAssistantMessage: () => {
+    const msg: ChatMessage = {
+      id: generateId(),
+      role: 'assistant',
+      content: '',
+      status: 'streaming',
+      timestamp: new Date(),
+    };
+    set((s) => ({
+      messages: [...s.messages, msg],
+      streamingMessageId: msg.id,
+      status: 'streaming',
+    }));
+    return msg;
+  },
 
-  cancelGeneration: () =>
-    set({
-      status: 'idle',
-      streamedText: '',
-      generatedText: '',
-      currentSegment: 0,
-      totalSegments: 0,
-    }),
+  appendToStreaming: (chunk: string) => {
+    const { streamingMessageId } = get();
+    if (!streamingMessageId) return;
+    set((s) => ({
+      messages: s.messages.map((m) =>
+        m.id === streamingMessageId
+          ? { ...m, content: m.content + chunk }
+          : m,
+      ),
+    }));
+  },
 
-  reset: () => set({ ...defaultState }),
+  setMessageStatus: (id: string, status: ChatMessage['status']) => {
+    set((s) => ({
+      messages: s.messages.map((m) => (m.id === id ? { ...m, status } : m)),
+      // Update aggregate status when the last message finishes
+      status:
+        status === 'done' || status === 'accepted' || status === 'rejected'
+          ? 'idle'
+          : status === 'error'
+          ? 'error'
+          : s.status,
+      streamingMessageId:
+        status !== 'streaming' ? null : s.streamingMessageId,
+    }));
+  },
+
+  setMessageError: (id: string) => {
+    set((s) => ({
+      messages: s.messages.map((m) =>
+        m.id === id ? { ...m, status: 'error' } : m,
+      ),
+      status: 'error',
+      streamingMessageId: null,
+    }));
+  },
+
+  clearConversation: () =>
+    set({ messages: [], status: 'idle', streamingMessageId: null }),
 }));
+
+// ─── Selector helpers ─────────────────────────────────────────────────────────
+
+/** Build a ConversationTurn[] from the message thread (for the API payload). */
+export function buildConversationHistory(messages: ChatMessage[]): ConversationTurn[] {
+  return messages
+    .filter((m) => m.status !== 'error') // skip failed messages
+    .map((m) => ({
+      role: m.role,
+      content: m.content.slice(0, 6000), // enforce API limit per turn
+    }));
+}

@@ -6,6 +6,7 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Input';
 import { Select } from '../ui/Select';
 import type { SelectOption } from '../ui/Select';
+import { Modal } from '../ui/Modal';
 import type { Character } from '../../types/novel';
 
 const ROLE_OPTIONS: SelectOption[] = [
@@ -44,6 +45,7 @@ export function NovelContextPanel({
 }: NovelContextPanelProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [descModal, setDescModal] = useState<{ index: number; value: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const addCharacter = () =>
     onCharactersChange([...characters, { name: '', role: 'other', description: '' }]);
@@ -230,7 +232,7 @@ export function NovelContextPanel({
                     {char.description || 'Brief description…'}
                   </button>
                   <button
-                    onClick={() => removeCharacter(i)}
+                    onClick={() => setDeleteConfirm(i)}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -363,6 +365,39 @@ export function NovelContextPanel({
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
       `}</style>
+
+      {/* Delete Character Confirm Modal */}
+      <Modal
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        title="Remove Character?"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteConfirm(null)} id="delete-char-cancel">
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              id="delete-char-confirm"
+              onClick={() => {
+                if (deleteConfirm !== null) removeCharacter(deleteConfirm);
+                setDeleteConfirm(null);
+              }}
+            >
+              Remove
+            </Button>
+          </>
+        }
+      >
+        <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+          Remove{' '}
+          <strong style={{ color: 'var(--color-text-primary)' }}>
+            {deleteConfirm !== null ? (characters[deleteConfirm]?.name?.trim() || `Character ${deleteConfirm + 1}`) : ''}
+          </strong>{' '}
+          from the story context? This won't affect already-written content.
+        </p>
+      </Modal>
     </>
   );
 }

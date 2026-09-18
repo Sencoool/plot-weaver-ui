@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Spinner } from '../components/ui/Spinner';
@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/Badge';
 import { EpisodeListItem } from '../components/novel/EpisodeListItem';
 import { CreateEpisodeModal } from '../components/novel/CreateEpisodeModal';
 import { NovelContextPanel } from '../components/novel/NovelContextPanel';
+import { Modal } from '../components/ui/Modal';
 import { useNovelStore } from '../store/novelStore';
 import { useEpisodeStore } from '../store/episodeStore';
 import { useUiStore } from '../store/uiStore';
@@ -38,8 +39,10 @@ export default function NovelEditor() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [worldSetting, setWorldSetting] = useState('');
 
-  // Episode modal
+  // Episode modals
   const [createEpOpen, setCreateEpOpen] = useState(false);
+  const [episodeToDelete, setEpisodeToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchNovel(novelId), fetchEpisodes(novelId)]).finally(() =>
@@ -54,7 +57,7 @@ export default function NovelEditor() {
     setTitle(activeNovel.title);
     setSummary(activeNovel.summary ?? '');
     setStatus(activeNovel.status);
-    setTags(activeNovel.tags.map((t) => t.tag.name).join(', '));
+    setTags(activeNovel.tags.map((t, index) => t).join(', '));
     const ctx = activeNovel.context;
     if (ctx) {
       setPlotOutline(ctx.plotOutline ?? '');
@@ -120,12 +123,22 @@ export default function NovelEditor() {
     navigate(`/writer/novel/${novelId}/episode/${ep.id}`);
   };
 
-  const handleDeleteEpisode = async (id: string) => {
+  const handleDeleteEpisode = (id: string) => {
+    const ep = episodes.find((e) => e.id === id);
+    if (ep) setEpisodeToDelete({ id: ep.id, title: ep.title });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!episodeToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteEpisode(id);
+      await deleteEpisode(episodeToDelete.id);
       addToast({ type: 'success', title: 'Episode deleted' });
+      setEpisodeToDelete(null);
     } catch {
       addToast({ type: 'error', title: 'Failed to delete episode' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -258,6 +271,45 @@ export default function NovelEditor() {
         onClose={() => setCreateEpOpen(false)}
         onCreate={handleCreateEpisode}
       />
+
+      {/* Delete Episode Confirm Modal */}
+      <Modal
+        isOpen={!!episodeToDelete}
+        onClose={() => !isDeleting && setEpisodeToDelete(null)}
+        title="Delete Episode"
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEpisodeToDelete(null)}
+              id="delete-episode-cancel-btn"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              leftIcon={<Trash2 size={14} />}
+              loading={isDeleting}
+              onClick={handleConfirmDelete}
+              id="delete-episode-confirm-btn"
+            >
+              Delete Episode
+            </Button>
+          </>
+        }
+      >
+        <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+          Are you sure you want to delete{' '}
+          <strong style={{ color: 'var(--color-text-primary)' }}>
+            &ldquo;{episodeToDelete?.title}&rdquo;
+          </strong>
+          ? This action <strong>cannot be undone</strong> and all content will be permanently lost.
+        </p>
+      </Modal>
     </div>
   );
 }

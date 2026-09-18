@@ -1,20 +1,24 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, Save, Sparkles, CheckCircle, AlertCircle,
-  Upload, Eye, EyeOff,
+  ArrowLeft, Save, Sparkles, CheckCircle, AlertCircle, BookOpen, Maximize2,
+  Upload, Eye, EyeOff, Trash2,
 } from 'lucide-react';
 import { TiptapEditor } from '../components/editor/TiptapEditor';
 import { AiPanel } from '../components/ai/AiPanel';
 import { TxtUploadModal } from '../components/novel/TxtUploadModal';
 import { ToastContainer } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
 import { Spinner } from '../components/ui/Spinner';
 import { useEpisodeStore } from '../store/episodeStore';
 import { useAiStore } from '../store/aiStore';
 import { useUiStore } from '../store/uiStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { episodeService } from '../services/episodeService';
+import { ContextDrawer } from '../components/editor/ContextDrawer';
+import { useNovelContext } from '../hooks/useNovelContext';
+import { FocusMode } from '../components/editor/FocusMode';
 import type { Editor } from '@tiptap/react';
 
 const AUTOSAVE_DELAY = 2500; // 2.5s after last keystroke
@@ -26,7 +30,7 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
     idle: null,
     saving: (
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-        <Spinner size={14} /> Saving…
+        <Spinner size={14} /> Saving窶ｦ
       </span>
     ),
     saved: (
@@ -50,7 +54,7 @@ export default function EpisodeEditor() {
 
   const [editor, setEditor] = useState<Editor | null>(null);
 
-  const { activeEpisode, fetchEpisode, setActiveEpisode } = useEpisodeStore();
+  const { activeEpisode, fetchEpisode, setActiveEpisode, deleteEpisode } = useEpisodeStore();
   const { openPanel, isPanelOpen } = useAiStore();
   const { addToast } = useUiStore();
 
@@ -60,6 +64,11 @@ export default function EpisodeEditor() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
+  const novelContext = useNovelContext(novelId);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Load existing episode
   useEffect(() => {
@@ -84,7 +93,7 @@ export default function EpisodeEditor() {
     }
   }, [activeEpisode]);
 
-  // Autosave — debounced
+  // Autosave 窶・debounced
   const performSave = useCallback(
     async (html: string) => {
       if (isNew || !episodeId || !title.trim()) return;
@@ -146,6 +155,21 @@ export default function EpisodeEditor() {
     }
   };
 
+  // Delete episode
+  const handleDelete = async () => {
+    if (!episodeId) return;
+    setIsDeleting(true);
+    try {
+      await deleteEpisode(episodeId);
+      addToast({ type: 'success', title: 'Episode deleted' });
+      navigate(`/writer/novel/${novelId}`, { replace: true });
+    } catch {
+      addToast({ type: 'error', title: 'Failed to delete episode', message: 'Please try again.' });
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+    }
+  };
+
   // Called by TxtUploadModal after successful upload
   const handleUploaded = (episodeId: string, openAi?: boolean) => {
     navigate(`/writer/novel/${novelId}/episode/${episodeId}`, { replace: true });
@@ -173,21 +197,13 @@ export default function EpisodeEditor() {
         <div
           style={{
             display: 'flex',
+            flexDirection: 'column',
             width: '100%',
             maxWidth: '1400px',
-            gap: '1.5rem',
+            gap: '0.75rem',
           }}
         >
-          {/* Left Column */}
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-            }}
-          >
-            {/* Header Row (Title & Controls) hovering above the box */}
+          {/* Header Row (Title & Controls) hovering above the boxes, spanning full width */}
             <div
               style={{
                 display: 'flex',
@@ -239,7 +255,7 @@ export default function EpisodeEditor() {
                 <button
                   onClick={() => setIsPublished((p) => !p)}
                   id="episode-publish-toggle"
-                  title={isPublished ? 'Published — click to unpublish' : 'Draft — click to publish'}
+                  title={isPublished ? 'Published 窶・click to unpublish' : 'Draft 窶・click to publish'}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -269,6 +285,25 @@ export default function EpisodeEditor() {
                   Import .txt
                 </Button>
                 <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<BookOpen size={14} />}
+                  onClick={() => setIsContextDrawerOpen(true)}
+                  id="episode-context-btn"
+                  style={{ color: novelContext.pinnedItems.length > 0 ? 'var(--color-violet-600)' : undefined }}
+                >
+                  บริบท{novelContext.pinnedItems.length > 0 ? ` (${novelContext.pinnedItems.length})` : ''}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon
+                  leftIcon={<Maximize2 size={14} />}
+                  onClick={() => setIsFocusMode(true)}
+                  id="episode-focus-btn"
+                  title="Focus Mode (F11)"
+                />
+                <Button
                   variant="ai"
                   size="sm"
                   leftIcon={<Sparkles size={14} />}
@@ -287,10 +322,30 @@ export default function EpisodeEditor() {
                 >
                   {isNew ? 'Create' : 'Save'}
                 </Button>
+                {!isNew && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<Trash2 size={14} />}
+                    onClick={() => setDeleteModalOpen(true)}
+                    id="episode-delete-btn"
+                    style={{ color: 'var(--color-danger)' }}
+                  >
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* Editor Box */}
+          {/* Main Content Area (Editor + AI Panel) */}
+          <div
+            style={{
+              display: 'flex',
+              width: '100%',
+              gap: '1.5rem',
+            }}
+          >
+            {/* Left Column: Editor Box */}
             <div
               style={{
                 flex: 1,
@@ -309,18 +364,16 @@ export default function EpisodeEditor() {
                 content={activeEpisode?.content ?? ''}
                 onChange={handleEditorChange}
                 onEditorReady={setEditor}
-                placeholder="Begin your story here… Let the words flow across the page."
+                placeholder="Begin your story here窶ｦ Let the words flow across the page."
                 className="h-full"
               />
             </div>
-          </div>
 
           {/* Right Column: AI Panel */}
           {isPanelOpen && (
             <div
               style={{
                 width: '380px',
-                marginTop: '2.5rem', // Aligns top of AI box with top of Editor box
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
@@ -338,19 +391,87 @@ export default function EpisodeEditor() {
                 novelId={novelId}
                 episodeId={isNew ? undefined : episodeId}
                 editor={editor}
+                buildPinnedContext={novelContext.buildPinnedContext}
               />
             </div>
           )}
+          </div>
         </div>
       </div>
+      {/* Focus Mode */}
+      <FocusMode
+        isOpen={isFocusMode}
+        onClose={() => setIsFocusMode(false)}
+        onOpenAiPanel={openPanel}
+        wordCount={editor?.storage?.characterCount?.words?.() ?? 0}
+      >
+        <TiptapEditor
+          content={activeEpisode?.content ?? ''}
+          onChange={handleEditorChange}
+          onEditorReady={setEditor}
+          placeholder="Begin your story here… Let the words flow across the page."
+          className="h-full"
+          novelId={novelId}
+          episodeId={isNew ? undefined : episodeId}
+        />
+      </FocusMode>
 
-      {/* .txt Upload Modal — extracted component */}
+      {/* Context Drawer */}
+      <ContextDrawer
+        isOpen={isContextDrawerOpen}
+        onClose={() => setIsContextDrawerOpen(false)}
+        novelContext={novelContext}
+      />
+
+
+      {/* .txt Upload Modal 窶・extracted component */}
       <TxtUploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         novelId={novelId}
         onUploaded={handleUploaded}
       />
+
+      {/* Delete Episode Confirm Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => !isDeleting && setDeleteModalOpen(false)}
+        title="Delete Episode"
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteModalOpen(false)}
+              id="delete-episode-cancel-btn"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              leftIcon={<Trash2 size={14} />}
+              loading={isDeleting}
+              onClick={handleDelete}
+              id="delete-episode-confirm-btn"
+            >
+              Delete Episode
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <p style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+            Are you sure you want to delete{' '}
+            <strong style={{ color: 'var(--color-text-primary)' }}>
+              &ldquo;{title || 'this episode'}&rdquo;
+            </strong>
+            ? This action <strong>cannot be undone</strong> and all content will be permanently lost.
+          </p>
+        </div>
+      </Modal>
 
       {/* Global toasts for this layout */}
       <ToastContainer />

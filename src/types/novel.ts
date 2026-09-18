@@ -6,7 +6,7 @@ export interface Novel {
   authorId: string;
   createdAt: string;
   updatedAt: string;
-  tags: { tag: { id: string; name: string } }[];
+  tags: string[];
   context?: NovelContext | null;
   _count?: { episodes: number; chunks?: number };
 }

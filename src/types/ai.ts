@@ -1,12 +1,34 @@
-export type GenerationStatus = 'idle' | 'generating' | 'streaming' | 'done' | 'error';
+﻿export type GenerationStatus = 'idle' | 'generating' | 'streaming' | 'done' | 'error';
+
+// ─── Chat Message Thread ─────────────────────────────────────────────────────
+
+export type ChatMessageStatus = 'streaming' | 'done' | 'error' | 'accepted' | 'rejected';
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  status: ChatMessageStatus;
+  timestamp: Date;
+}
+
+export interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// ─── API Types ───────────────────────────────────────────────────────────────
 
 /** POST /story-generations/stream request body */
 export interface StreamGenerationRequest {
   novelId: string;
   episodeId?: string;
   userMessage: string;
-  /** 1–15000 chars. ≤2500 = single-shot, >2500 = segmented */
-  targetChars?: number;
+  /** Current editor content (HTML) — used by the API as the story so far context */
+  currentContent?: string;
+  /** Prior conversation turns for multi-turn context */
+  conversationHistory?: ConversationTurn[];
+  /** Temperature controls creativity */
   temperature?: number;
 }
 

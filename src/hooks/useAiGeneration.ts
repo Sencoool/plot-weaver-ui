@@ -1,51 +1,50 @@
-import { useRef, useCallback } from 'react';
+﻿import { useRef, useCallback } from 'react';
 import { streamStoryGeneration } from '../services/aiService';
-import { useAiStore } from '../store/aiStore';
+import { useAiStore, buildConversationHistory } from '../store/aiStore';
 import { useUiStore } from '../store/uiStore';
 import type { StreamGenerationRequest } from '../types/ai';
 
 /**
- * Hook that orchestrates the entire AI generation flow.
- * Reads config from aiStore, calls aiService, and dispatches events back to aiStore.
+ * Hook that orchestrates the AI generation flow.
+ * - Adds user and assistant messages to the conversation thread.
+ * - Streams tokens into the latest assistant message.
+ * - Sends full conversation history to the backend for multi-turn context.
  *
- * @param novelId - The current novel's UUID
- * @param episodeId - The current episode's UUID (used as seed)
+ * @param novelId - Current novel UUID
+ * @param episodeId - Current episode UUID (optional)
  * @param getEditorContent - Function to get current editor HTML content
  */
 export function useAiGeneration(
   novelId: string,
   episodeId: string | undefined,
   getEditorContent: () => string,
+  buildPinnedContext?: () => string,
 ) {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const {
-    prompt,
-    targetChars,
     temperature,
-    startGeneration,
-    appendChunk,
-    setSegmentProgress,
-    finishGeneration,
-    setError,
-    cancelGeneration,
+    messages,
+    addUserMessage,
+    startAssistantMessage,
+    appendToStreaming,
+    setMessageStatus,
+    setMessageError,
   } = useAiStore();
 
   const { addToast } = useUiStore();
 
-  const generate = useCallback(async () => {
-    console.log("🔥 generate() WAS CALLED!", { novelId, episodeId, prompt });
-
+  const generate = useCallback(async (promptText: string) => {
     if (!novelId) {
       addToast({ type: 'error', title: 'Generation blocked', message: 'novelId is missing' });
       return;
     }
-    if (!prompt.trim()) {
+    if (!promptText.trim()) {
       addToast({ type: 'error', title: 'Generation blocked', message: 'Prompt is empty' });
       return;
     }
 
-    let currentContent = "";
+    let currentContent = '';
     try {
       currentContent = getEditorContent();
     } catch (error) {
@@ -54,77 +53,83 @@ export function useAiGeneration(
       return;
     }
 
-    // Abort any ongoing generation
+    // Abort any ongoing stream
     abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
-    console.log("🔥 Calling startGeneration...", currentContent);
-    startGeneration(currentContent);
+    // 0. Prepend pinned context if any
+    const pinnedCtx = buildPinnedContext?.();
+    const fullPrompt = pinnedCtx ? `${pinnedCtx}\n\n${promptText.trim()}` : promptText.trim();
 
+    // 1. Add the user message to thread
+    addUserMessage(promptText.trim());
+
+    // 2. Build conversation history from existing messages (BEFORE adding assistant turn)
+    const conversationHistory = buildConversationHistory(messages);
+
+    // 3. Start assistant message bubble (streaming)
+    const assistantMsg = startAssistantMessage();
+
+    // 4. Build API request
     const request: StreamGenerationRequest = {
       novelId,
       ...(episodeId ? { episodeId } : {}),
-      userMessage: prompt.trim(),
-      targetChars,
+      userMessage: fullPrompt,
+      currentContent: currentContent || undefined,
+      conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
       temperature,
     };
 
-    console.log("🔥 Request payload built:", request);
-
     try {
-      console.log("🔥 Calling streamStoryGeneration API...");
       await streamStoryGeneration(
         request,
         (event) => {
-          console.log("🔥 Received event from stream:", event.type);
           switch (event.type) {
             case 'chunk':
-              appendChunk(event.text);
+              appendToStreaming(event.text);
               break;
             case 'segment_start':
-              setSegmentProgress(event.segment, event.total);
+              // Progress — future segment indicator
               break;
             case 'segment_done':
-              // no-op: segment_start handles the progress UI
               break;
             case 'done':
-              finishGeneration(event.requestId, event.totalChars);
+              setMessageStatus(assistantMsg.id, 'done');
               break;
             case 'error':
-              setError(event.message);
+              setMessageError(assistantMsg.id);
               addToast({ type: 'error', title: 'AI Generation Failed', message: event.message });
               break;
           }
         },
         abortControllerRef.current.signal,
       );
-      console.log("🔥 streamStoryGeneration finished successfully");
     } catch (err) {
-      console.error("🔥 Error in streamStoryGeneration:", err);
-      if ((err as Error).name === 'AbortError') return; // User cancelled
+      if ((err as Error).name === 'AbortError') {
+        setMessageStatus(assistantMsg.id, 'done'); // treat cancel as done
+        return;
+      }
       const message = err instanceof Error ? err.message : 'Unknown error';
-      setError(message);
+      setMessageError(assistantMsg.id);
       addToast({ type: 'error', title: 'AI Generation Failed', message });
     }
   }, [
     novelId,
     episodeId,
-    prompt,
-    targetChars,
     temperature,
+    messages,
     getEditorContent,
-    startGeneration,
-    appendChunk,
-    setSegmentProgress,
-    finishGeneration,
-    setError,
+    addUserMessage,
+    startAssistantMessage,
+    appendToStreaming,
+    setMessageStatus,
+    setMessageError,
     addToast,
   ]);
 
   const cancel = useCallback(() => {
     abortControllerRef.current?.abort();
-    cancelGeneration();
-  }, [cancelGeneration]);
+  }, []);
 
   return { generate, cancel };
 }

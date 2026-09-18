@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams } 
 import { useThemeStore } from './store/themeStore';
 import { useAuthStore } from './store/authStore';
 import api from './services/api';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
@@ -75,13 +76,16 @@ function App() {
           <Route path="novel/:id" element={<NovelDetails />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
-          <Route path="profile" element={<UserProfile />} />
-          <Route path="admin" element={<AdminDashboard />} />
+          {/* Protected routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="profile" element={<UserProfile />} />
+            <Route path="admin" element={<AdminDashboard />} />
 
-          {/* Writer workspace */}
-          <Route path="writer" element={<WriterDashboard />} />
-          <Route path="writer/novel/:id" element={<NovelEditor />} />
-          <Route path="writer/novel/:novelId/episode/:episodeId" element={<EpisodeEditor />} />
+            {/* Writer workspace */}
+            <Route path="writer" element={<WriterDashboard />} />
+            <Route path="writer/novel/:id" element={<NovelEditor />} />
+            <Route path="writer/novel/:novelId/episode/:episodeId" element={<EpisodeEditor />} />
+          </Route>
         </Route>
 
         {/* Reader — distraction-free full screen */}
