@@ -58,8 +58,8 @@ export default function NovelDetails() {
         )}
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {activeNovel.tags.map(({ tag }) => (
-            <Badge key={tag.id} variant="blue">{tag.name}</Badge>
+          {(activeNovel.tags ?? []).map((tag) => (
+            <Badge key={tag} variant="blue">{tag}</Badge>
           ))}
         </div>
       </div>

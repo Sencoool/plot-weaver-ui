@@ -20,7 +20,7 @@ export default function Discover() {
     const matchesSearch = n.title.toLowerCase().includes(search.toLowerCase()) ||
       (n.summary ?? '').toLowerCase().includes(search.toLowerCase());
     const matchesGenre = activeGenre === 'All' ||
-      n.tags.some(({ tag }) => tag.name.toLowerCase() === activeGenre.toLowerCase());
+      (n.tags ?? []).some((tag) => tag.toLowerCase() === activeGenre.toLowerCase());
     return matchesSearch && matchesGenre;
   });
 

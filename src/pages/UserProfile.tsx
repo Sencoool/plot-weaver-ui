@@ -16,15 +16,18 @@ export default function UserProfile() {
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState('');
+  // Draft of the display name; null means "not edited yet" so the field falls
+  // back to the authenticated user without a state-syncing effect.
+  const [draftName, setDraftName] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const editName = draftName ?? user?.name ?? '';
 
   useEffect(() => {
     if (user?.id) {
-      setEditName(user.name ?? '');
       fetchNovels({ authorId: user.id });
     }
-  }, [user?.id, user?.name, fetchNovels]);
+  }, [user?.id, fetchNovels]);
 
   const handleSaveName = async () => {
     if (!editName.trim()) return;
@@ -34,6 +37,7 @@ export default function UserProfile() {
       setUser(data);
       addToast({ type: 'success', title: 'Profile updated!' });
       setIsEditing(false);
+      setDraftName(null);
     } catch {
       addToast({ type: 'error', title: 'Failed to update profile' });
     } finally {
@@ -86,7 +90,7 @@ export default function UserProfile() {
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <Input
                   value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
+                  onChange={(e) => setDraftName(e.target.value)}
                   placeholder="Your name"
                   id="profile-name-input"
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
@@ -95,7 +99,7 @@ export default function UserProfile() {
                 <Button variant="primary" size="sm" loading={isSaving} onClick={handleSaveName} id="profile-save-btn">
                   <CheckCircle size={15} />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => { setIsEditing(false); setEditName(user.name ?? ''); }}>
+                <Button variant="ghost" size="sm" onClick={() => { setIsEditing(false); setDraftName(null); }}>
                   Cancel
                 </Button>
               </div>
@@ -105,7 +109,7 @@ export default function UserProfile() {
                   {user.name ?? user.email?.split('@')[0] ?? 'Writer'}
                 </h1>
                 <button
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => { setDraftName(null); setIsEditing(true); }}
                   id="profile-edit-name-btn"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '2px' }}
                   aria-label="Edit display name"

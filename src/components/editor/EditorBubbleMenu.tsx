@@ -52,7 +52,7 @@ export function EditorBubbleMenu({ editor, inlineAiState, onInlineAiAction }: Ed
     <BubbleMenu
       editor={editor}
       updateDelay={150}
-      options={{ placement: 'top', strategy: 'fixed', zIndex: 9999 }}
+      options={{ placement: 'top', strategy: 'fixed' }}
     >
       <div
         role="toolbar"
@@ -62,6 +62,10 @@ export function EditorBubbleMenu({ editor, inlineAiState, onInlineAiAction }: Ed
           padding: '0.375rem', backgroundColor: 'var(--color-bg-elevated)',
           border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
           boxShadow: 'var(--shadow-lg)',
+          // floating-ui positions this element inline but does not set z-index,
+          // so the stacking order is ours to declare (was passed to `options`,
+          // where tippy/floating-ui silently ignored it).
+          zIndex: 9999,
         }}
       >
         {/* Formatting buttons */}

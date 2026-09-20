@@ -40,23 +40,26 @@ const STORY_SNIPPETS = [
 
 function TypewriterDemo() {
   const [snippetIndex, setSnippetIndex] = useState(0);
-  const [displayed, setDisplayed] = useState('');
-  const [isDone, setIsDone] = useState(false);
+  // Typing state carries the snippet it belongs to, so switching snippets
+  // resets what is rendered without writing state from inside the effect.
+  const [typed, setTyped] = useState({ index: -1, text: '', done: false });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const snippet = STORY_SNIPPETS[snippetIndex];
+  const isCurrent = typed.index === snippetIndex;
+  const displayed = isCurrent ? typed.text : '';
+  const isDone = isCurrent ? typed.done : false;
+
   useEffect(() => {
-    const snippet = STORY_SNIPPETS[snippetIndex];
     let i = 0;
-    setDisplayed('');
-    setIsDone(false);
 
     function type() {
       if (i < snippet.length) {
-        setDisplayed(snippet.slice(0, i + 1));
         i++;
+        setTyped({ index: snippetIndex, text: snippet.slice(0, i), done: false });
         timerRef.current = setTimeout(type, 28);
       } else {
-        setIsDone(true);
+        setTyped({ index: snippetIndex, text: snippet, done: true });
         // Pause then switch to next snippet
         timerRef.current = setTimeout(() => {
           setSnippetIndex((prev) => (prev + 1) % STORY_SNIPPETS.length);
@@ -66,7 +69,7 @@ function TypewriterDemo() {
 
     timerRef.current = setTimeout(type, 400);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [snippetIndex]);
+  }, [snippetIndex, snippet]);
 
   return (
     <div

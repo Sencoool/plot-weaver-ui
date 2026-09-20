@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Edit3, Trash2, Eye, EyeOff, Brain } from 'lucide-react';
+import { Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import type { Episode } from '../../types/episode';
@@ -13,8 +13,6 @@ interface EpisodeListItemProps {
 }
 
 export function EpisodeListItem({ episode, index, novelId, onDelete, mode = 'writer' }: EpisodeListItemProps) {
-  const aiPending = episode.aiEnrichmentStatus !== 'completed';
-
   return (
     <div
       style={{

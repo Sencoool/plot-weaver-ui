@@ -23,7 +23,7 @@ export function QuickPromptBar({ anchorRect, onSubmit, onClose }: QuickPromptBar
     const viewportW = window.innerWidth;
     const barW = 420;
 
-    let top = anchorRect.bottom + window.scrollY + 8;
+    const top = anchorRect.bottom + window.scrollY + 8;
     let left = anchorRect.left + window.scrollX;
 
     if (left + barW > viewportW - 8) left = viewportW - barW - 8;

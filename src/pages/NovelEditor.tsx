@@ -16,10 +16,22 @@ import { useUiStore } from '../store/uiStore';
 import { novelService } from '../services/novelService';
 import type { Character } from '../types/novel';
 
+/** Novel context characters may arrive as a JSON string or as an array. */
+function parseCharacters(raw: Character[] | string | null | undefined): Character[] {
+  if (!raw) return [];
+  if (typeof raw !== 'string') return raw;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Character[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function NovelEditor() {
   const { id: novelId = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { activeNovel, fetchNovel, updateNovel } = useNovelStore();
+  const { fetchNovel, updateNovel } = useNovelStore();
   const { episodes, fetchEpisodes, createEpisode, deleteEpisode } = useEpisodeStore();
   const { addToast } = useUiStore();
 
@@ -45,38 +57,34 @@ export default function NovelEditor() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    Promise.all([fetchNovel(novelId), fetchEpisodes(novelId)]).finally(() =>
-      setIsLoading(false),
-    );
+    let cancelled = false;
+
+    Promise.all([fetchNovel(novelId), fetchEpisodes(novelId)])
+      .then(() => {
+        if (cancelled) return;
+        // Seed the editable form from the freshly loaded novel. Doing it in this
+        // continuation (rather than in an effect watching activeNovel) keeps the
+        // form from being overwritten whenever the store updates for any other
+        // reason, e.g. while the user is still typing.
+        const novel = useNovelStore.getState().activeNovel;
+        if (!novel || novel.id !== novelId) return;
+        setTitle(novel.title);
+        setSummary(novel.summary ?? '');
+        setStatus(novel.status);
+        setTags(novel.tags.join(', '));
+        const ctx = novel.context;
+        if (!ctx) return;
+        setPlotOutline(ctx.plotOutline ?? '');
+        setWritingStyle(ctx.writingStyle ?? '');
+        setCharacters(parseCharacters(ctx.characters));
+        setWorldSetting(ctx.worldBuilding ?? '');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, [novelId, fetchNovel, fetchEpisodes]);
-
-  // Sync form from loaded novel
-  useEffect(() => {
-    if (!activeNovel) return;
-    console.log(activeNovel.context)
-    setTitle(activeNovel.title);
-    setSummary(activeNovel.summary ?? '');
-    setStatus(activeNovel.status);
-    setTags(activeNovel.tags.map((t, index) => t).join(', '));
-    const ctx = activeNovel.context;
-    if (ctx) {
-      setPlotOutline(ctx.plotOutline ?? '');
-      setWritingStyle(ctx.writingStyle ?? '');
-
-      let parseCharacters: Character[] = [];
-      if (typeof ctx.characters === 'string') {
-        try {
-          parseCharacters = JSON.parse(ctx.characters);
-        } catch (error) {
-          parseCharacters = [];
-        }
-      } else {
-        parseCharacters = ctx.characters ?? [];
-      }
-      setCharacters(parseCharacters);
-      setWorldSetting(ctx.worldBuilding ?? '');
-    }
-  }, [activeNovel]);
 
   const handleSaveNovel = async () => {
     setIsSaving(true);

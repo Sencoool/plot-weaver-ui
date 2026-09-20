@@ -1,4 +1,4 @@
-﻿import { useRef, useCallback } from 'react';
+﻿import { useRef, useCallback, useEffect } from 'react';
 import { streamStoryGeneration } from '../services/aiService';
 import { useAiStore, buildConversationHistory } from '../store/aiStore';
 import { useUiStore } from '../store/uiStore';
@@ -22,6 +22,15 @@ export function useAiGeneration(
 ) {
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // The context builder is recreated on every parent render (it closes over the
+  // pinned items and the editor), so read it through a ref instead of capturing
+  // it in generate() — otherwise a generation started right after pinning a
+  // character could send the previously built context.
+  const buildPinnedContextRef = useRef(buildPinnedContext);
+  useEffect(() => {
+    buildPinnedContextRef.current = buildPinnedContext;
+  });
+
   const {
     temperature,
     messages,
@@ -44,7 +53,7 @@ export function useAiGeneration(
       return;
     }
 
-    let currentContent = '';
+    let currentContent: string;
     try {
       currentContent = getEditorContent();
     } catch (error) {
@@ -58,7 +67,7 @@ export function useAiGeneration(
     abortControllerRef.current = new AbortController();
 
     // 0. Prepend pinned context if any
-    const pinnedCtx = buildPinnedContext?.();
+    const pinnedCtx = buildPinnedContextRef.current?.();
     const fullPrompt = pinnedCtx ? `${pinnedCtx}\n\n${promptText.trim()}` : promptText.trim();
 
     // 1. Add the user message to thread

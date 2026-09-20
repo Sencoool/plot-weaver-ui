@@ -18,7 +18,7 @@ interface NovelStore {
   clearError: () => void;
 }
 
-export const useNovelStore = create<NovelStore>((set, _get) => ({
+export const useNovelStore = create<NovelStore>((set) => ({
   novels: [],
   paginationMeta: null,
   activeNovel: null,

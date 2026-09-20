@@ -110,7 +110,7 @@ export function TiptapEditor({
 
   return (
     <div
-      className="flex flex-col h-full"
+      className={className ? `flex flex-col h-full ${className}` : 'flex flex-col h-full'}
       style={{ backgroundColor: 'var(--color-bg-elevated)', position: 'relative' }}
     >
       {/* Sticky Toolbar */}
