@@ -7,6 +7,7 @@ export interface Episode {
   content: string;
   order: number;
   isPublished: boolean;
+  cast: string[];
   aiEnrichmentStatus: AiEnrichmentStatus;
   summary: string | null;
   aiEnrichedAt: string | null;
@@ -19,6 +20,7 @@ export interface CreateEpisodeDto {
   content: string;
   order?: number;
   isPublished?: boolean;
+  cast?: string[];
 }
 
 export interface UpdateEpisodeDto {
@@ -26,6 +28,7 @@ export interface UpdateEpisodeDto {
   content?: string;
   order?: number;
   isPublished?: boolean;
+  cast?: string[];
 }
 
 /** Returned by POST /novels/:novelId/episodes/upload-content */

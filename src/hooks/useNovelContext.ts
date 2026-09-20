@@ -8,7 +8,7 @@ export interface PinnedItem {
   content: string;
 }
 
-interface UseNovelContextResult {
+export interface UseNovelContextResult {
   context: NovelContext | null;
   characters: Character[];
   isLoading: boolean;
@@ -16,31 +16,42 @@ interface UseNovelContextResult {
   togglePin: (item: PinnedItem) => void;
   isPinned: (type: PinnedItem['type'], label: string) => boolean;
   buildPinnedContext: () => string;
+  buildEpisodeCastContext: (cast: string[], editorText?: string) => string;
   refetch: () => void;
 }
 
 export function useNovelContext(novelId: string): UseNovelContextResult {
   const [context, setContext] = useState<NovelContext | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(Boolean(novelId));
   const [pinnedItems, setPinnedItems] = useState<PinnedItem[]>([]);
 
-  const fetchContext = useCallback(async () => {
+  // Fetch on mount and whenever the novel changes. State is written from the
+  // promise callbacks (never synchronously in the effect body) so mounting does
+  // not cascade an extra render; `cancelled` drops responses for a stale novel.
+  useEffect(() => {
     if (!novelId) return;
-    setIsLoading(true);
-    try {
-      const ctx = await novelService.getContext(novelId);
-      setContext(ctx);
-    } catch {
-      // Context may not exist yet — that's okay
-      setContext(null);
-    } finally {
-      setIsLoading(false);
-    }
+
+    let cancelled = false;
+
+    novelService
+      .getContext(novelId)
+      .then((ctx) => { if (!cancelled) setContext(ctx); })
+      .catch(() => { if (!cancelled) setContext(null); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+
+    return () => { cancelled = true; };
   }, [novelId]);
 
-  useEffect(() => {
-    fetchContext();
-  }, [fetchContext]);
+  // Manual re-fetch (used by the context drawer's refresh affordance)
+  const refetch = useCallback(() => {
+    if (!novelId) return;
+    setIsLoading(true);
+    novelService
+      .getContext(novelId)
+      .then(setContext)
+      .catch(() => setContext(null))
+      .finally(() => setIsLoading(false));
+  }, [novelId]);
 
   // Parse characters (API may return as JSON string)
   const characters: Character[] = (() => {
@@ -74,5 +85,53 @@ export function useNovelContext(novelId: string): UseNovelContextResult {
     return lines.join('\n');
   }, [pinnedItems]);
 
-  return { context, characters, isLoading, pinnedItems, togglePin, isPinned, buildPinnedContext, refetch: fetchContext };
+  /**
+   * Build a context string containing only the characters in `cast`.
+   *
+   * Fallback behaviour (when cast is empty):
+   *   1. Scan editorText for character name occurrences and auto-include matches.
+   *   2. If editorText is empty too, include ALL characters (legacy behaviour).
+   */
+  const buildEpisodeCastContext = useCallback(
+    (cast: string[], editorText?: string): string => {
+      if (characters.length === 0) return '';
+
+      let selected: Character[];
+
+      if (cast.length > 0) {
+        // Explicit cast — only include chosen characters
+        const castSet = new Set(cast.map((n) => n.toLowerCase()));
+        selected = characters.filter((c) => castSet.has(c.name.toLowerCase()));
+      } else if (editorText && editorText.trim().length > 0) {
+        // Auto-detect: include characters whose name appears in the episode text
+        const lowerText = editorText.toLowerCase();
+        selected = characters.filter((c) => lowerText.includes(c.name.toLowerCase()));
+      } else {
+        // No cast, no text — include all characters
+        selected = characters;
+      }
+
+      if (selected.length === 0) return '';
+
+      const lines = ['[Episode Characters]'];
+      for (const char of selected) {
+        const desc = char.description ? ': ' + char.description : '';
+        lines.push('- ' + char.name + (char.role ? ' (' + char.role + ')' : '') + desc);
+      }
+      return lines.join('\n');
+    },
+    [characters],
+  );
+
+  return {
+    context,
+    characters,
+    isLoading,
+    pinnedItems,
+    togglePin,
+    isPinned,
+    buildPinnedContext,
+    buildEpisodeCastContext,
+    refetch,
+  };
 }

@@ -19,6 +19,7 @@ import { episodeService } from '../services/episodeService';
 import { ContextDrawer } from '../components/editor/ContextDrawer';
 import { useNovelContext } from '../hooks/useNovelContext';
 import { FocusMode } from '../components/editor/FocusMode';
+import { CastSelector } from '../components/editor/CastSelector';
 import type { Editor } from '@tiptap/react';
 
 const AUTOSAVE_DELAY = 2500; // 2.5s after last keystroke
@@ -59,10 +60,14 @@ export default function EpisodeEditor() {
   const { addToast } = useUiStore();
 
   const [title, setTitle] = useState('');
+  const [cast, setCast] = useState<string[]>([]);
   const [isPublished, setIsPublished] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(!isNew);
+  // Which episode the form is currently populated for — the loading spinner is
+  // derived from it instead of being toggled synchronously inside an effect.
+  const [loadedEpisodeId, setLoadedEpisodeId] = useState<string | null>(null);
+  const isLoading = !isNew && loadedEpisodeId !== episodeId;
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
@@ -70,28 +75,36 @@ export default function EpisodeEditor() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
 
-  // Load existing episode
+  // Load existing episode and seed the form from it
   useEffect(() => {
-    if (!isNew && episodeId) {
-      setIsLoading(true);
-      fetchEpisode(episodeId)
-        .then(() => setIsLoading(false))
-        .catch(() => {
-          setIsLoading(false);
-          addToast({ type: 'error', title: 'Failed to load episode' });
-        });
-    } else {
+    if (isNew || !episodeId) {
       setActiveEpisode(null);
+      return;
     }
-  }, [episodeId, isNew, fetchEpisode, setActiveEpisode, addToast]);
 
-  // Populate form from loaded episode
-  useEffect(() => {
-    if (activeEpisode) {
-      setTitle(activeEpisode.title);
-      setIsPublished(activeEpisode.isPublished);
-    }
-  }, [activeEpisode]);
+    let cancelled = false;
+
+    fetchEpisode(episodeId)
+      .then(() => {
+        if (cancelled) return;
+        // Seed from the store: fetchEpisode resolves even when the request
+        // failed, so only use the episode if it is the one we asked for.
+        const episode = useEpisodeStore.getState().activeEpisode;
+        if (!episode || episode.id !== episodeId) return;
+        setTitle(episode.title);
+        setIsPublished(episode.isPublished);
+        setCast(episode.cast ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) addToast({ type: 'error', title: 'Failed to load episode' });
+      })
+      .finally(() => {
+        // Marks the episode as resolved either way, so the spinner cannot hang
+        if (!cancelled) setLoadedEpisodeId(episodeId);
+      });
+
+    return () => { cancelled = true; };
+  }, [episodeId, isNew, fetchEpisode, setActiveEpisode, addToast]);
 
   // Autosave 窶・debounced
   const performSave = useCallback(
@@ -99,7 +112,7 @@ export default function EpisodeEditor() {
       if (isNew || !episodeId || !title.trim()) return;
       setSaveStatus('saving');
       try {
-        await episodeService.update(episodeId, { content: html, title });
+        await episodeService.update(episodeId, { content: html, title, cast });
         setSaveStatus('saved');
         // Reset to idle after 3s
         setTimeout(() => setSaveStatus('idle'), 3000);
@@ -107,7 +120,7 @@ export default function EpisodeEditor() {
         setSaveStatus('error');
       }
     },
-    [isNew, episodeId, title],
+    [isNew, episodeId, title, cast],
   );
 
   const debouncedSave = useDebounce(performSave, AUTOSAVE_DELAY);
@@ -135,6 +148,7 @@ export default function EpisodeEditor() {
           title: title.trim(),
           content,
           isPublished,
+          cast,
         });
         addToast({ type: 'success', title: 'Episode created!' });
         navigate(`/writer/novel/${novelId}/episode/${created.id}`, { replace: true });
@@ -143,6 +157,7 @@ export default function EpisodeEditor() {
           title: title.trim(),
           content,
           isPublished,
+          cast,
         });
         setSaveStatus('saved');
         addToast({ type: 'success', title: 'Episode saved!' });
@@ -154,6 +169,28 @@ export default function EpisodeEditor() {
       setIsSaving(false);
     }
   };
+
+  // Handle cast change
+  const handleCastChange = useCallback(
+    async (newCast: string[]) => {
+      setCast(newCast);
+      if (!isNew && episodeId) {
+        try {
+          await episodeService.update(episodeId, { cast: newCast });
+        } catch {
+          addToast({ type: 'error', title: 'Failed to update cast' });
+        }
+      }
+    },
+    [isNew, episodeId, addToast],
+  );
+
+  const buildAiContext = useCallback(() => {
+    const pinned = novelContext.buildPinnedContext();
+    const editorText = editor?.getText() ?? '';
+    const castContext = novelContext.buildEpisodeCastContext(cast, editorText);
+    return [pinned, castContext].filter(Boolean).join('\n\n');
+  }, [novelContext, cast, editor]);
 
   // Delete episode
   const handleDelete = async () => {
@@ -284,6 +321,11 @@ export default function EpisodeEditor() {
                 >
                   Import .txt
                 </Button>
+                <CastSelector
+                  characters={novelContext.characters}
+                  cast={cast}
+                  onCastChange={handleCastChange}
+                />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -292,7 +334,7 @@ export default function EpisodeEditor() {
                   id="episode-context-btn"
                   style={{ color: novelContext.pinnedItems.length > 0 ? 'var(--color-violet-600)' : undefined }}
                 >
-                  บริบท{novelContext.pinnedItems.length > 0 ? ` (${novelContext.pinnedItems.length})` : ''}
+                  Context{novelContext.pinnedItems.length > 0 ? ` (${novelContext.pinnedItems.length})` : ''}
                 </Button>
                 <Button
                   variant="ghost"
@@ -391,7 +433,7 @@ export default function EpisodeEditor() {
                 novelId={novelId}
                 episodeId={isNew ? undefined : episodeId}
                 editor={editor}
-                buildPinnedContext={novelContext.buildPinnedContext}
+                buildPinnedContext={buildAiContext}
               />
             </div>
           )}

@@ -3,6 +3,7 @@ import {
   Sparkles, X, Check, RotateCcw, AlertCircle, Trash2, Copy,
 } from 'lucide-react';
 import { useAiStore } from '../../store/aiStore';
+import { useModelStore } from '../../store/modelStore';
 import { useConversationPersistence } from '../../hooks/useConversationPersistence';
 import { AiComposer } from './AiComposer';
 import type { Editor } from '@tiptap/react';
@@ -293,6 +294,7 @@ export function AiPanel({ novelId, episodeId, editor, buildPinnedContext }: AiPa
   const closePanel = useAiStore((s) => s.closePanel);
   const status = useAiStore((s) => s.status);
   const messages = useAiStore((s) => s.messages);
+  const activeModel = useModelStore((s) => s.activeModel);
 
   const { clearAndPersist } = useConversationPersistence(episodeId);
 
@@ -347,8 +349,10 @@ export function AiPanel({ novelId, episodeId, editor, buildPinnedContext }: AiPa
             <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>
               {isRunning ? (
                 <span style={{ color: '#6366f1' }}>● Generating…</span>
+              ) : activeModel ? (
+                <span>{activeModel.label} ({activeModel.modelName})</span>
               ) : (
-                <span>Powered by AI</span>
+                <span style={{ color: '#eab308' }}>No model configured</span>
               )}
             </p>
           </div>

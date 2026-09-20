@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Moon, Sun, LogOut, User, PenLine, LayoutDashboard } from 'lucide-react';
+import { BookOpen, Moon, Sun, LogOut, User, PenLine, LayoutDashboard, Settings } from 'lucide-react';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/Button';
@@ -124,6 +124,16 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
                 <Button variant="ghost" size="sm" leftIcon={<User size={15} />}>
                   {user?.name ?? user?.email?.split('@')[0] ?? 'Profile'}
                 </Button>
+              </Link>
+              {/* Settings */}
+              <Link to="/settings" id="nav-settings" aria-label="Settings">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon
+                  leftIcon={<Settings size={15} />}
+                  title="Settings"
+                />
               </Link>
               {/* Logout */}
               <Button

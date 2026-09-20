@@ -1,5 +1,8 @@
 ﻿import { useRef, useState, useEffect } from 'react';
-import { Send, Square, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Square, Sliders, ChevronDown, ChevronUp, AlertCircle, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useModelStore } from '../../store/modelStore';
+import { useUiStore } from '../../store/uiStore';
 import { useAiStore } from '../../store/aiStore';
 import { useAiGeneration } from '../../hooks/useAiGeneration';
 import type { Editor } from '@tiptap/react';
@@ -15,17 +18,17 @@ interface AiComposerProps {
 // - No messages yet → first-session prompts
 // - Last message accepted → follow-up prompts
 const FIRST_SESSION_PROMPTS = [
-  'เขียนต่อจากตรงนี้',
-  'เขียนบทสนทนา',
-  'เพิ่มรายละเอียดฉาก',
-  'เขียนฉากใหม่',
+  'Continue from here',
+  'Write dialogue',
+  'Add scene details',
+  'Write a new scene',
 ];
 
 const FOLLOW_UP_PROMPTS = [
-  'เขียนต่อจากตรงที่หยุด',
-  'ทำให้ยาวขึ้น',
-  'เพิ่มอารมณ์ให้มากขึ้น',
-  'เปลี่ยนน้ำเสียง',
+  'Continue where you stopped',
+  'Make it longer',
+  'Add more emotion',
+  'Change the tone',
 ];
 
 export function AiComposer({ novelId, episodeId, editor, buildPinnedContext }: AiComposerProps) {
@@ -36,6 +39,16 @@ export function AiComposer({ novelId, episodeId, editor, buildPinnedContext }: A
 
   const [localPrompt, setLocalPrompt] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const { activeModel, models, fetchModels } = useModelStore();
+  const { addToast } = useUiStore();
+
+  useEffect(() => {
+    if (models.length === 0) {
+      void fetchModels();
+    }
+  }, [models.length, fetchModels]);
+
+  const hasConfiguredModel = Boolean(activeModel);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const getEditorContent = () => {
@@ -61,7 +74,15 @@ export function AiComposer({ novelId, episodeId, editor, buildPinnedContext }: A
   }, [localPrompt]);
 
   const handleGenerate = () => {
-    if (!localPrompt.trim() || !novelId || isRunning) return;
+    if (!hasConfiguredModel) {
+      addToast({
+        type: 'warning',
+        title: 'Model Required',
+        message: 'Please configure an AI model in Settings first.',
+      });
+      return;
+    }
+    if (!localPrompt.trim() || !novelId || isRunning || !hasConfiguredModel) return;
     const text = localPrompt.trim();
     setLocalPrompt('');
     void generate(text);
@@ -84,8 +105,46 @@ export function AiComposer({ novelId, episodeId, editor, buildPinnedContext }: A
         display: 'flex', flexDirection: 'column', gap: '0.625rem',
       }}
     >
+      {/* Unconfigured Model Alert */}
+      {!hasConfiguredModel && (
+        <div
+          style={{
+            padding: '0.625rem 0.75rem',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+            border: '1px solid rgba(234, 179, 8, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertCircle size={15} color="#eab308" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-primary)' }}>
+              No AI model configured.
+            </span>
+          </div>
+          <Link
+            to="/settings"
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'var(--color-primary)',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            }}
+          >
+            Configure in Settings <ExternalLink size={11} />
+          </Link>
+        </div>
+      )}
+
       {/* Quick-prompt chips — shown when not running */}
-      {!isRunning && (
+      {hasConfiguredModel &&
+      !isRunning && (
         <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
           {quickPrompts.map((qp) => (
             <button
@@ -127,8 +186,8 @@ export function AiComposer({ novelId, episodeId, editor, buildPinnedContext }: A
           value={localPrompt}
           onChange={(e) => setLocalPrompt(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isRunning ? 'กำลังเขียน…' : 'พิมพ์คำสั่งให้ AI… (Enter ส่ง · Shift+Enter ขึ้นบรรทัด)'}
-          disabled={isRunning}
+          placeholder={isRunning ? 'Writing…' : (!hasConfiguredModel ? 'Configure an AI model in Settings to write…' : 'Instruct AI… (Enter to send · Shift+Enter for newline)')}
+          disabled={isRunning || !hasConfiguredModel}
           rows={1}
           style={{
             flex: 1, resize: 'none', border: 'none', outline: 'none',
@@ -159,14 +218,14 @@ export function AiComposer({ novelId, episodeId, editor, buildPinnedContext }: A
           <button
             id="ai-generate-btn"
             onClick={handleGenerate}
-            disabled={!localPrompt.trim() || !novelId || isRunning}
+            disabled={!localPrompt.trim() || !novelId || isRunning || !hasConfiguredModel}
             title="Generate (Enter)"
             style={{
               width: 32, height: 32, borderRadius: '0.5rem', border: 'none',
-              background: (!localPrompt.trim() || !novelId || isRunning)
+              background: (!localPrompt.trim() || !novelId || isRunning || !hasConfiguredModel)
                 ? 'var(--color-surface)'
                 : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              color: (!localPrompt.trim() || !novelId || isRunning)
+              color: (!localPrompt.trim() || !novelId || isRunning || !hasConfiguredModel)
                 ? 'var(--color-text-muted)'
                 : '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',

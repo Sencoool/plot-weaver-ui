@@ -16,6 +16,7 @@ import WriterDashboard from './pages/WriterDashboard';
 import NovelEditor from './pages/NovelEditor';
 import EpisodeEditor from './pages/EpisodeEditor';
 import UserProfile from './pages/UserProfile';
+import Settings from './pages/Settings';
 import AdminDashboard from './pages/AdminDashboard';
 
 /** Handles the Google OAuth callback — extracts ?token= from URL and logs user in */
@@ -79,6 +80,7 @@ function App() {
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="profile" element={<UserProfile />} />
+            <Route path="settings" element={<Settings />} />
             <Route path="admin" element={<AdminDashboard />} />
 
             {/* Writer workspace */}
