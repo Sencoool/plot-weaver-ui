@@ -4,6 +4,7 @@ import { useThemeStore } from './store/themeStore';
 import { useAuthStore } from './store/authStore';
 import api from './services/api';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import MainLayout from './layouts/MainLayout';
 // Home stays eager: it is the landing page and the first paint users see.
@@ -81,8 +82,9 @@ function App() {
   }, [token, user, setUser, logout]);
 
   return (
-    <Router>
-      <Suspense fallback={<RouteFallback />}>
+    <ErrorBoundary>
+      <Router>
+        <Suspense fallback={<RouteFallback />}>
         <Routes>
           {/* Public pages — MainLayout */}
           <Route path="/" element={<MainLayout />}>
@@ -110,8 +112,9 @@ function App() {
           {/* Google OAuth callback */}
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
-      </Suspense>
-    </Router>
+        </Suspense>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
