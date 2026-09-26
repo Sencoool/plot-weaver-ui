@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Cpu, ArrowLeft, Sliders } from 'lucide-react';
+import { Cpu, ArrowLeft, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '../components/layout/Navbar';
 import { ModelSettings } from './settings/ModelSettings';
+import { AccountSettings } from './settings/AccountSettings';
 
-type SettingsTab = 'models' | 'preferences';
+type SettingsTab = 'models' | 'account';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('models');
@@ -85,7 +86,7 @@ export default function Settings() {
             </button>
 
             <button
-              disabled
+              onClick={() => setActiveTab('account')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -93,23 +94,24 @@ export default function Settings() {
                 padding: '0.625rem 0.875rem',
                 borderRadius: 'var(--radius-md)',
                 border: 'none',
-                backgroundColor: 'transparent',
-                color: 'var(--color-text-muted)',
+                backgroundColor: activeTab === 'account' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                color: activeTab === 'account' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                fontWeight: activeTab === 'account' ? 600 : 500,
                 fontSize: '0.875rem',
-                cursor: 'not-allowed',
+                cursor: 'pointer',
                 textAlign: 'left',
-                opacity: 0.6,
+                transition: 'all var(--transition-fast)',
               }}
-              title="Coming soon"
             >
-              <Sliders size={16} />
-              Preferences (soon)
+              <User size={16} />
+              Account
             </button>
           </aside>
 
           {/* Tab Content */}
           <section>
             {activeTab === 'models' && <ModelSettings />}
+            {activeTab === 'account' && <AccountSettings />}
           </section>
         </div>
       </main>
