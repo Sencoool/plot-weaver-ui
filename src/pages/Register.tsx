@@ -41,7 +41,7 @@ export default function Register() {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
       login(meRes.data, data.access_token);
-      addToast({ type: 'success', title: 'Account created!', message: 'Welcome to PlotWeaver.' });
+      addToast({ type: 'success', title: 'Account created!', message: 'Welcome to Narrax.' });
       navigate('/writer');
     } catch {
       addToast({ type: 'error', title: 'Registration failed', message: 'Email may already be in use.' });
@@ -76,7 +76,7 @@ export default function Register() {
             Start your story
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9375rem' }}>
-            Create your free PlotWeaver account
+            Create your free Narrax account
           </p>
         </div>
 

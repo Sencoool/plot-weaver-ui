@@ -204,7 +204,7 @@ export default function Home() {
               maxWidth: '600px', margin: '0 auto 2.5rem',
             }}
           >
-            PlotWeaver gives every writer an intelligent co-author. Generate chapters, maintain story context, and publish to readers — all in one place.
+            Narrax gives every writer an intelligent co-author. Generate chapters, maintain story context, and publish to readers — all in one place.
           </p>
 
           <div
@@ -293,7 +293,7 @@ export default function Home() {
               Ready to write your masterpiece?
             </h2>
             <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem', fontSize: '1.0625rem' }}>
-              Join thousands of writers already using PlotWeaver to craft extraordinary stories.
+              Join thousands of writers already using Narrax to craft extraordinary stories.
             </p>
             <Link to="/register" id="cta-register-btn">
               <Button variant="primary" size="xl" leftIcon={<Sparkles size={18} />}>

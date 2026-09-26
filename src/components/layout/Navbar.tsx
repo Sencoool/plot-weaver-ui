@@ -48,7 +48,7 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
         <Link
           to="/"
           style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', textDecoration: 'none' }}
-          aria-label="PlotWeaver — Go to home"
+          aria-label="Narrax — Go to home"
         >
           <div
             style={{

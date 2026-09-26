@@ -78,7 +78,7 @@ export default function Login() {
             <BookOpen size={24} color="#fff" />
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: '0.375rem' }}>
-            Sign in to PlotWeaver
+            Sign in to Narrax
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9375rem' }}>
             Continue your story where you left off

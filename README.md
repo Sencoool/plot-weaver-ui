@@ -1,8 +1,8 @@
-# PlotWeaver UI
+# Narrax UI
 
-Frontend for **PlotWeaver**, an AI-assisted novel writing platform. Writers draft serialized novels episode by episode with a streaming AI co-writer that knows the novel's characters, world and style; readers discover and read published novels in a distraction-free reader.
+Frontend for **Narrax**, an AI-assisted novel writing platform. Writers draft serialized novels episode by episode with a streaming AI co-writer that knows the novel's characters, world and style; readers discover and read published novels in a distraction-free reader.
 
-This repository is the **client only**. It talks to a separate PlotWeaver API (NestJS) over REST plus one streaming endpoint, defaulting to `http://localhost:3000`.
+This repository is the **client only**. It talks to a separate Narrax API (NestJS) over REST plus one streaming endpoint, defaulting to `http://localhost:3000`.
 
 ---
 
@@ -57,7 +57,7 @@ This repository is the **client only**. It talks to a separate PlotWeaver API (N
 
 ### Prerequisites
 - Node.js 22+ and npm (developed against Node 22.14).
-- The PlotWeaver API running and reachable — this app renders but every request fails without it.
+- The Narrax API running and reachable — this app renders but every request fails without it.
 
 ### Install and run
 

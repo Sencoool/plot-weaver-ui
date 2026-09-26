@@ -686,7 +686,7 @@ export function ModelSettings() {
               No models configured yet
             </p>
             <p style={{ fontSize: '0.8125rem' }}>
-              Add a cloud API key or local Ollama model above to enable AI writing in PlotWeaver.
+              Add a cloud API key or local Ollama model above to enable AI writing in Narrax.
             </p>
           </div>
         ) : (

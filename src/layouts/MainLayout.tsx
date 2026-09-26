@@ -27,7 +27,7 @@ export default function MainLayout() {
           color: 'var(--color-text-muted)',
         }}
       >
-        © {new Date().getFullYear()} PlotWeaver. Built for storytellers.
+        © {new Date().getFullYear()} Narrax. Built for storytellers.
       </footer>
 
       <ToastContainer />
