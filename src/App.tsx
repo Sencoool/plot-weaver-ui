@@ -1,23 +1,37 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
 import { useThemeStore } from './store/themeStore';
 import { useAuthStore } from './store/authStore';
 import api from './services/api';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import MainLayout from './layouts/MainLayout';
+// Home stays eager: it is the landing page and the first paint users see.
 import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Discover from './pages/Discover';
-import NovelDetails from './pages/NovelDetails';
-import Reader from './pages/Reader';
-import WriterDashboard from './pages/WriterDashboard';
-import NovelEditor from './pages/NovelEditor';
-import EpisodeEditor from './pages/EpisodeEditor';
-import UserProfile from './pages/UserProfile';
-import Settings from './pages/Settings';
-import AdminDashboard from './pages/AdminDashboard';
+
+// Everything else is loaded on demand, so the entry bundle carries only the
+// shell + the landing page instead of all thirteen screens.
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Discover = lazy(() => import('./pages/Discover'));
+const NovelDetails = lazy(() => import('./pages/NovelDetails'));
+const Reader = lazy(() => import('./pages/Reader'));
+const WriterDashboard = lazy(() => import('./pages/WriterDashboard'));
+const NovelEditor = lazy(() => import('./pages/NovelEditor'));
+const EpisodeEditor = lazy(() => import('./pages/EpisodeEditor'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+const Settings = lazy(() => import('./pages/Settings'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+
+/** Placeholder shown while a route chunk is being fetched. */
+function RouteFallback() {
+  return (
+    <div style={{ padding: '4rem 1.5rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+      Loading…
+    </div>
+  );
+}
 
 /** Handles the Google OAuth callback — extracts ?token= from URL and logs user in */
 function AuthCallback() {
@@ -68,35 +82,39 @@ function App() {
   }, [token, user, setUser, logout]);
 
   return (
-    <Router>
-      <Routes>
-        {/* Public pages — MainLayout */}
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Home />} />
-          <Route path="discover" element={<Discover />} />
-          <Route path="novel/:id" element={<NovelDetails />} />
-          <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
-          {/* Protected routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="profile" element={<UserProfile />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="admin" element={<AdminDashboard />} />
+    <ErrorBoundary>
+      <Router>
+        <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          {/* Public pages — MainLayout */}
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Home />} />
+            <Route path="discover" element={<Discover />} />
+            <Route path="novel/:id" element={<NovelDetails />} />
+            <Route path="login" element={<Login />} />
+            <Route path="register" element={<Register />} />
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="profile" element={<UserProfile />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="admin" element={<AdminDashboard />} />
 
-            {/* Writer workspace */}
-            <Route path="writer" element={<WriterDashboard />} />
-            <Route path="writer/novel/:id" element={<NovelEditor />} />
-            <Route path="writer/novel/:novelId/episode/:episodeId" element={<EpisodeEditor />} />
+              {/* Writer workspace */}
+              <Route path="writer" element={<WriterDashboard />} />
+              <Route path="writer/novel/:id" element={<NovelEditor />} />
+              <Route path="writer/novel/:novelId/episode/:episodeId" element={<EpisodeEditor />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Reader — distraction-free full screen */}
-        <Route path="/read/:novelId/:episodeId" element={<Reader />} />
+          {/* Reader — distraction-free full screen */}
+          <Route path="/read/:novelId/:episodeId" element={<Reader />} />
 
-        {/* Google OAuth callback */}
-        <Route path="/auth/callback" element={<AuthCallback />} />
-      </Routes>
-    </Router>
+          {/* Google OAuth callback */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
+        </Routes>
+        </Suspense>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

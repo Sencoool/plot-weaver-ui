@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { novelService } from '../services/novelService';
 import type { NovelContext, Character } from '../types/novel';
 
@@ -17,7 +17,6 @@ export interface UseNovelContextResult {
   isPinned: (type: PinnedItem['type'], label: string) => boolean;
   buildPinnedContext: () => string;
   buildEpisodeCastContext: (cast: string[], editorText?: string) => string;
-  refetch: () => void;
 }
 
 export function useNovelContext(novelId: string): UseNovelContextResult {
@@ -42,25 +41,20 @@ export function useNovelContext(novelId: string): UseNovelContextResult {
     return () => { cancelled = true; };
   }, [novelId]);
 
-  // Manual re-fetch (used by the context drawer's refresh affordance)
-  const refetch = useCallback(() => {
-    if (!novelId) return;
-    setIsLoading(true);
-    novelService
-      .getContext(novelId)
-      .then(setContext)
-      .catch(() => setContext(null))
-      .finally(() => setIsLoading(false));
-  }, [novelId]);
-
-  // Parse characters (API may return as JSON string)
-  const characters: Character[] = (() => {
+  // Parse characters (the API may return them as a JSON string). Memoised so the
+  // array identity is stable — buildEpisodeCastContext is keyed on it, and a new
+  // array every render would rebuild the AI context on every keystroke.
+  const characters = useMemo<Character[]>(() => {
     if (!context?.characters) return [];
     if (typeof context.characters === 'string') {
-      try { return JSON.parse(context.characters as unknown as string); } catch { return []; }
+      try {
+        return JSON.parse(context.characters as unknown as string) as Character[];
+      } catch {
+        return [];
+      }
     }
     return context.characters;
-  })();
+  }, [context]);
 
   const togglePin = useCallback((item: PinnedItem) => {
     setPinnedItems((prev) => {
@@ -132,6 +126,5 @@ export function useNovelContext(novelId: string): UseNovelContextResult {
     isPinned,
     buildPinnedContext,
     buildEpisodeCastContext,
-    refetch,
   };
 }
