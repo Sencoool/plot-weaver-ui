@@ -76,6 +76,31 @@ async function signIn(page: Page, token: string): Promise<void> {
   );
 }
 
+/**
+ * Gives the throwaway writer a reachable model.
+ *
+ * Without one the composer is disabled and its placeholder reads "Configure an AI
+ * model in Settings to write…", so the AI test cannot even find its input. The
+ * model is copied from the environment rather than hardcoded, so the same spec
+ * works against any local Ollama installation.
+ */
+async function seedModel(request: APIRequestContext, token: string): Promise<void> {
+  const response = await request.post(`${API_URL}/user-models`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      label: 'E2E local model',
+      provider: 'ollama',
+      modelName: process.env.E2E_MODEL_NAME ?? 'my-novel-model',
+      baseUrl: process.env.E2E_OLLAMA_URL ?? 'http://localhost:11434',
+      isDefault: true,
+    },
+  });
+  expect(
+    response.ok(),
+    `create model: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
+}
+
 function episodePath(seed: Seed): string {
   return `/writer/novel/${seed.novelId}/episode/${seed.episodeId}`;
 }
@@ -137,8 +162,14 @@ test('a streamed AI reply is still there after a reload', async ({ page, request
   );
 
   const seed = await seedEpisode(request);
+  // Before the first navigation: the editor loads the model list on mount, and the
+  // composer is only enabled once one exists.
+  await seedModel(request, seed.token);
   await signIn(page, seed.token);
   await page.goto(episodePath(seed));
+
+  // The AI panel starts closed, so the composer does not exist yet.
+  await page.getByRole('button', { name: 'AI Write' }).click();
 
   const composer = page.getByPlaceholder(/Instruct AI/);
   await expect(composer).toBeVisible();
@@ -151,8 +182,12 @@ test('a streamed AI reply is still there after a reload', async ({ page, request
     `the provider returned ${reply.status} — check the AI configuration`,
   ).toBe('done');
 
-  // The assertion uses the text the API stored, so it cannot drift with the
-  // editor's markup.
+  // Assertion uses text the API stored, so it cannot drift with the editor's
+  // markup. The panel starts closed, so it has to be reopened before the stored
+  // conversation is rendered — reopening it is what fetches the history.
   await page.reload();
-  await expect(page.getByText(reply.content.slice(0, 60))).toBeVisible();
+  await page.getByRole('button', { name: 'AI Write' }).click();
+
+  const fragment = reply.content.split('\n')[0].trim().slice(0, 30);
+  await expect(page.getByText(fragment)).toBeVisible();
 });
