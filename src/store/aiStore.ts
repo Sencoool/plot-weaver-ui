@@ -126,10 +126,18 @@ export const useAiStore = create<AiStore>((set, get) => ({
 
 // ─── Selector helpers ─────────────────────────────────────────────────────────
 
+/**
+ * Maximum turns a single generation request may carry. Mirrors
+ * `conversationHistory.max(20)` in the API's StreamGenerationDto — sending more
+ * makes POST /story-generations/stream fail with a 400.
+ */
+const MAX_HISTORY_TURNS = 20;
+
 /** Build a ConversationTurn[] from the message thread (for the API payload). */
 export function buildConversationHistory(messages: ChatMessage[]): ConversationTurn[] {
   return messages
     .filter((m) => m.status !== 'error') // skip failed messages
+    .slice(-MAX_HISTORY_TURNS) // keep only the most recent turns
     .map((m) => ({
       role: m.role,
       content: m.content.slice(0, 6000), // enforce API limit per turn
