@@ -183,6 +183,8 @@ The inline AI actions call the same endpoint with action-specific prompts (defin
 
 `GET|POST|DELETE /episodes/:episodeId/conversation`. Finished messages (`done`, `accepted`, `rejected`, `error`) are uploaded once each, tracked by message id; the last 50 are mirrored into `localStorage` under `pw_conv_<episodeId>` and used when the API call fails. Episodes that do not exist yet keep their history in memory only.
 
+**Why 50 and 20 are different numbers.** The API stores and returns 50 messages per episode, but the streaming request only accepts **20 turns** (see `conversationHistory` above) with a cap of 6000 characters each. The client intentionally loads 50 and sends the newest 20: sending all 50 would exceed the provider's context window and cost more for no benefit. This is deliberate, not a bug — don't "fix" it by raising the limit.
+
 ---
 
 ## Backend API surface
