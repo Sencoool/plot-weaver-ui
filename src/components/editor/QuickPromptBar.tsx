@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Sparkles, X } from 'lucide-react';
 
 interface QuickPromptBarProps {

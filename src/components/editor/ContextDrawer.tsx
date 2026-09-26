@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { X, Pin, PinOff, User, Globe, FileText, Pen, ChevronDown, ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import type { UseNovelContextResult, PinnedItem } from '../../hooks/useNovelContext';

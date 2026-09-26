@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildConversationHistory } from './aiStore';
 import type { ChatMessage } from '../types/ai';
 

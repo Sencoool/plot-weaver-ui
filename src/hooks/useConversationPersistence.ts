@@ -1,4 +1,4 @@
-﻿import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAiStore } from '../store/aiStore';
 import { conversationService } from '../services/conversationService';
 import type { ChatMessage } from '../types/ai';

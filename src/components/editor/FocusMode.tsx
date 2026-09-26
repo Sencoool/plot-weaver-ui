@@ -1,4 +1,4 @@
-﻿import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { X, Sparkles } from 'lucide-react';
 
 interface FocusModeProps {

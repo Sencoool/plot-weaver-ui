@@ -1,4 +1,4 @@
-﻿export type GenerationStatus = 'idle' | 'generating' | 'streaming' | 'done' | 'error';
+export type GenerationStatus = 'idle' | 'generating' | 'streaming' | 'done' | 'error';
 
 // ─── Chat Message Thread ─────────────────────────────────────────────────────
 

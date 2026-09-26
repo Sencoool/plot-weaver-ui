@@ -1,4 +1,4 @@
-﻿import { BubbleMenu } from '@tiptap/react/menus';
+import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
 import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Sparkles, Expand, MessageSquare, Languages, Loader2 } from 'lucide-react';
 import type { InlineAiAction, InlineAiPhase } from '../../hooks/useInlineAi';

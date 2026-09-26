@@ -1,4 +1,4 @@
-﻿import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { streamStoryGeneration } from '../services/aiService';
 import { useAiStore, buildConversationHistory } from '../store/aiStore';
 import { useUiStore } from '../store/uiStore';

@@ -1,4 +1,4 @@
-﻿import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Send, Square, Sliders, ChevronDown, ChevronUp, AlertCircle, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useModelStore } from '../../store/modelStore';

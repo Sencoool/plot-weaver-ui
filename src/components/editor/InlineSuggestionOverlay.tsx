@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Check, X, RefreshCw, Loader2 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
 import type { InlineAiPhase } from '../../hooks/useInlineAi';

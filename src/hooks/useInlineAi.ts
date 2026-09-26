@@ -1,4 +1,4 @@
-﻿import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { streamStoryGeneration } from '../services/aiService';
 import type { Editor } from '@tiptap/react';
 
