@@ -72,7 +72,7 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
               letterSpacing: '-0.02em',
             }}
           >
-            Plot<span className="ai-gradient-text">Weaver</span>
+            Nar<span className="ai-gradient-text">rax</span>
           </span>
         </Link>
 
