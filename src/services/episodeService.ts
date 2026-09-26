@@ -3,6 +3,7 @@ import type {
   Episode,
   CreateEpisodeDto,
   UpdateEpisodeDto,
+  EpisodeRevision,
   UploadContentResponse,
 } from '../types/episode';
 
@@ -51,6 +52,24 @@ export const episodeService = {
   /** PATCH /episodes/:id */
   async update(id: string, dto: UpdateEpisodeDto): Promise<Episode> {
     const { data } = await api.patch<Episode>(`/episodes/${id}`, dto);
+    return data;
+  },
+
+  /** GET /episodes/:id/revisions — newest first, at most five */
+  async getRevisions(id: string): Promise<EpisodeRevision[]> {
+    const { data } = await api.get<EpisodeRevision[]>(`/episodes/${id}/revisions`);
+    return data;
+  },
+
+  /**
+   * POST /episodes/:id/revisions/:revisionId/restore
+   *
+   * The API snapshots the live text first, so restoring is itself undoable.
+   */
+  async restoreRevision(id: string, revisionId: string): Promise<Episode> {
+    const { data } = await api.post<Episode>(
+      `/episodes/${id}/revisions/${revisionId}/restore`,
+    );
     return data;
   },
 

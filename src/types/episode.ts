@@ -31,6 +31,20 @@ export interface UpdateEpisodeDto {
   cast?: string[];
 }
 
+/**
+ * A snapshot of an episode taken before the editor overwrote its text.
+ * `content` is editor HTML. The API keeps the newest five per episode.
+ */
+export interface EpisodeRevision {
+  id: string;
+  episodeId: string;
+  title: string;
+  content: string;
+  order: number;
+  cast: string[];
+  createdAt: string;
+}
+
 /** Returned by POST /novels/:novelId/episodes/upload-content */
 export interface UploadContentResponse {
   id: string;

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Save, Sparkles, CheckCircle, AlertCircle, BookOpen, Maximize2,
-  Upload, Eye, EyeOff, Trash2,
+  Upload, Eye, EyeOff, Trash2, History as HistoryIcon,
 } from 'lucide-react';
 import { TiptapEditor } from '../components/editor/TiptapEditor';
 import { AiPanel } from '../components/ai/AiPanel';
@@ -20,6 +20,7 @@ import { ContextDrawer } from '../components/editor/ContextDrawer';
 import { useNovelContext } from '../hooks/useNovelContext';
 import { FocusMode } from '../components/editor/FocusMode';
 import { CastSelector } from '../components/editor/CastSelector';
+import { RevisionHistoryDrawer } from '../components/editor/RevisionHistoryDrawer';
 import type { Editor } from '@tiptap/react';
 
 const AUTOSAVE_DELAY = 2500; // 2.5s after last keystroke
@@ -74,6 +75,10 @@ export default function EpisodeEditor() {
   const novelContext = useNovelContext(novelId);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  // Bumped after a restore: TiptapEditor only reads `content` on mount, so the
+  // key is what actually re-renders the restored text.
+  const [contentKey, setContentKey] = useState(0);
 
   // Load existing episode and seed the form from it
   useEffect(() => {
@@ -213,6 +218,21 @@ export default function EpisodeEditor() {
     if (openAi) openPanel();
   };
 
+  // After a revision restore: re-read the episode, then remount the editor so the
+  // restored text is what the writer sees.
+  const handleRevisionRestored = useCallback(async () => {
+    if (isNew || !episodeId) return;
+    await fetchEpisode(episodeId);
+    const episode = useEpisodeStore.getState().activeEpisode;
+    if (episode && episode.id === episodeId) {
+      setTitle(episode.title);
+      setIsPublished(episode.isPublished);
+      setCast(episode.cast ?? []);
+    }
+    setContentKey((key) => key + 1);
+    setSaveStatus('idle');
+  }, [isNew, episodeId, fetchEpisode]);
+
   if (isLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 64px)' }}>
@@ -336,6 +356,18 @@ export default function EpisodeEditor() {
                 >
                   Context{novelContext.pinnedItems.length > 0 ? ` (${novelContext.pinnedItems.length})` : ''}
                 </Button>
+                {!isNew && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<HistoryIcon size={14} />}
+                    onClick={() => setIsHistoryOpen(true)}
+                    id="episode-history-btn"
+                    title="Saved versions of this episode"
+                  >
+                    History
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -408,6 +440,7 @@ export default function EpisodeEditor() {
                 onEditorReady={setEditor}
                 placeholder="Begin your story here… Let the words flow across the page."
                 className="h-full"
+                key={contentKey}
               />
             </div>
 
@@ -453,10 +486,19 @@ export default function EpisodeEditor() {
           onEditorReady={setEditor}
           placeholder="Begin your story here… Let the words flow across the page."
           className="h-full"
+          key={contentKey}
           novelId={novelId}
           episodeId={isNew ? undefined : episodeId}
         />
       </FocusMode>
+
+      {/* Revision History Drawer */}
+      <RevisionHistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        episodeId={isNew ? undefined : episodeId}
+        onRestored={handleRevisionRestored}
+      />
 
       {/* Context Drawer */}
       <ContextDrawer
