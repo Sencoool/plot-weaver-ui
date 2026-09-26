@@ -52,7 +52,8 @@ async function seedEpisode(request: APIRequestContext): Promise<Seed> {
 
   const novel = await request.post(`${API_URL}/novels`, {
     headers,
-    data: { title: `E2E novel ${Date.now()}`, summary: null, status: 'draft' },
+    // `summary` is optional but NOT nullable -- sending null fails validation.
+    data: { title: `E2E novel ${Date.now()}`, status: 'draft' },
   });
   expect(novel.ok(), `create novel: ${novel.status()} ${await novel.text()}`).toBeTruthy();
   const { id: novelId } = (await novel.json()) as { id: string };
