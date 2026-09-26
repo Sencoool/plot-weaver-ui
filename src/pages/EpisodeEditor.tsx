@@ -31,7 +31,7 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
     idle: null,
     saving: (
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-        <Spinner size={14} /> Saving窶ｦ
+        <Spinner size={14} /> Saving…
       </span>
     ),
     saved: (
@@ -106,7 +106,7 @@ export default function EpisodeEditor() {
     return () => { cancelled = true; };
   }, [episodeId, isNew, fetchEpisode, setActiveEpisode, addToast]);
 
-  // Autosave 窶・debounced
+  // Autosave — debounced
   const performSave = useCallback(
     async (html: string) => {
       if (isNew || !episodeId || !title.trim()) return;
@@ -292,7 +292,7 @@ export default function EpisodeEditor() {
                 <button
                   onClick={() => setIsPublished((p) => !p)}
                   id="episode-publish-toggle"
-                  title={isPublished ? 'Published 窶・click to unpublish' : 'Draft 窶・click to publish'}
+                  title={isPublished ? 'Published — click to unpublish' : 'Draft — click to publish'}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -406,7 +406,7 @@ export default function EpisodeEditor() {
                 content={activeEpisode?.content ?? ''}
                 onChange={handleEditorChange}
                 onEditorReady={setEditor}
-                placeholder="Begin your story here窶ｦ Let the words flow across the page."
+                placeholder="Begin your story here… Let the words flow across the page."
                 className="h-full"
               />
             </div>
@@ -466,7 +466,7 @@ export default function EpisodeEditor() {
       />
 
 
-      {/* .txt Upload Modal 窶・extracted component */}
+      {/* .txt Upload Modal — extracted component */}
       <TxtUploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}

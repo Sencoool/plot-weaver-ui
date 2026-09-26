@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================
-   NARRAX DESIGN SYSTEM 窶・CSS Custom Properties
+   NARRAX DESIGN SYSTEM — CSS Custom Properties
    Light Mode tokens on :root, Dark Mode overrides on .dark
    ============================================================ */
 
@@ -102,7 +102,7 @@
 }
 
 /* ============================================================
-   DARK MODE 窶・Override tokens
+   DARK MODE — Override tokens
    ============================================================ */
 .dark {
   --color-bg-base:         #0d1321;
@@ -155,7 +155,7 @@
 }
 
 /* ============================================================
-   TAILWIND v4 窶・@theme mapping (exposes CSS vars as utilities)
+   TAILWIND v4 — @theme mapping (exposes CSS vars as utilities)
    ============================================================ */
 @theme {
   --font-family-sans:    var(--font-sans);
@@ -423,7 +423,7 @@
   .input-sm { padding: 0.375rem 0.625rem; font-size: 0.875rem; }
   .input-lg { padding: 0.625rem 1rem; font-size: 1rem; }
 
-  /* Fix: select native arrow causes square right corners 窶・override with custom SVG arrow */
+  /* Fix: select native arrow causes square right corners — override with custom SVG arrow */
   select.input {
     appearance: none;
     -webkit-appearance: none;
